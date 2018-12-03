@@ -22,7 +22,7 @@
 
 package io.crate.planner;
 
-import com.carrotsearch.hppc.ObjectObjectMap;
+import com.carrotsearch.hppc.ObjectObjectHashMap;
 import io.crate.action.sql.SQLOperations;
 import io.crate.action.sql.Session;
 import io.crate.data.RowN;
@@ -38,9 +38,7 @@ import org.junit.Test;
 import org.mockito.Answers;
 
 import java.util.Collection;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.Matchers.is;
@@ -117,17 +115,12 @@ public class TableStatsServiceTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testRowsToTableStatConversion() throws InterruptedException, ExecutionException, TimeoutException {
-        CompletableFuture<ObjectObjectMap<RelationName, TableStats.Stats>> statsFuture = new CompletableFuture<>();
-        TableStatsService.TableStatsResultReceiver receiver =
-            new TableStatsService.TableStatsResultReceiver(statsFuture::complete);
+        ObjectObjectHashMap<RelationName, TableStats.Stats> stats = new ObjectObjectHashMap<>();
+        TableStatsService.gatherStats(new RowN(new Object[]{0L, 10L, "empty", "foo"}), stats);
+        TableStatsService.gatherStats(new RowN(new Object[]{1L, 10L, "custom", "foo"}), stats);
+        TableStatsService.gatherStats(new RowN(new Object[]{2L, 20L, "doc", "foo"}), stats);
+        TableStatsService.gatherStats(new RowN(new Object[]{3L, 30L, "bar", "foo"}), stats);
 
-        receiver.setNextRow(new RowN(new Object[]{0L, 10L, "empty", "foo"}));
-        receiver.setNextRow(new RowN(new Object[]{1L, 10L, "custom", "foo"}));
-        receiver.setNextRow(new RowN(new Object[]{2L, 20L, "doc", "foo"}));
-        receiver.setNextRow(new RowN(new Object[]{3L, 30L, "bar", "foo"}));
-        receiver.allFinished(false);
-
-        ObjectObjectMap<RelationName, TableStats.Stats> stats = statsFuture.get(10, TimeUnit.SECONDS);
         assertThat(stats.size(), is(4));
         TableStats.Stats statValues = stats.get(new RelationName("bar", "foo"));
         assertThat(statValues.numDocs, is(3L));
