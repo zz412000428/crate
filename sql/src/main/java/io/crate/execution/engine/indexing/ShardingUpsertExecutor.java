@@ -88,6 +88,7 @@ public class ShardingUpsertExecutor
     private final UpsertResultCollector resultCollector;
     private final boolean isDebugEnabled;
     private volatile boolean createPartitionsRequestOngoing = false;
+    private boolean shouldRetry = false;
 
     ShardingUpsertExecutor(ClusterService clusterService,
                            NodeJobsCounter nodeJobsCounter,
@@ -197,17 +198,19 @@ public class ShardingUpsertExecutor
                     rowSourceInfos,
                     resultFuture);
 
-            listener = new RetryListener<>(
-                scheduler,
-                l -> {
-                    if (isDebugEnabled) {
-                        LOGGER.debug("Executing retry Listener for nodeId: {} request: {}", nodeId, request);
-                    }
-                    requestExecutor.execute(request, l);
-                },
-                listener,
-                BACKOFF_POLICY
-            );
+            if (shouldRetry) {
+                listener = new RetryListener<>(
+                    scheduler,
+                    l -> {
+                        if (isDebugEnabled) {
+                            LOGGER.debug("Executing retry Listener for nodeId: {} request: {}", nodeId, request);
+                        }
+                        requestExecutor.execute(request, l);
+                    },
+                    listener,
+                    BACKOFF_POLICY
+                );
+            }
             requestExecutor.execute(request, listener);
         }
         return resultFuture;
@@ -254,11 +257,12 @@ public class ShardingUpsertExecutor
 
         // If IO is involved the source iterator should pause when the target node reaches a concurrent job counter limit.
         // Without IO, we assume that the source iterates over in-memory structures which should be processed as
-        // fast as possible to free resources.
+        // fast as possible to free resources, but should not be retried when target node is overloaded.
         Predicate<ShardedRequests<ShardUpsertRequest, ShardUpsertRequest.Item>> shouldPause =
             this::shouldPauseOnPartitionCreation;
         if (batchIterator.involvesIO()) {
             shouldPause = shouldPause.and(this::shouldPauseOnTargetNodeJobsCounter);
+            shouldRetry = true;
         }
 
         BatchIteratorBackpressureExecutor<ShardedRequests<ShardUpsertRequest, ShardUpsertRequest.Item>, UpsertResults> executor =

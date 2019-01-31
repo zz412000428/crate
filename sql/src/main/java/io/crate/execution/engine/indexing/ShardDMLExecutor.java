@@ -72,6 +72,7 @@ public class ShardDMLExecutor<TReq extends ShardRequest<TReq, TItem>, TItem exte
     private final String localNodeId;
 
     private int numItems = -1;
+    private boolean shouldRetry = false;
 
     public ShardDMLExecutor(int bulkSize,
                             ScheduledExecutorService scheduler,
@@ -107,7 +108,10 @@ public class ShardDMLExecutor<TReq extends ShardRequest<TReq, TItem>, TItem exte
         return result;
     }
 
-    private RetryListener<ShardResponse> withRetry(TReq request, FutureActionListener<ShardResponse, Long> listener) {
+    private ActionListener<ShardResponse> withRetry(TReq request, FutureActionListener<ShardResponse, Long> listener) {
+        if (shouldRetry == false) {
+            return listener;
+        }
         return new RetryListener<>(
             scheduler,
             l -> operation.accept(request, l),
@@ -124,11 +128,13 @@ public class ShardDMLExecutor<TReq extends ShardRequest<TReq, TItem>, TItem exte
         long initialResult = 0L;
 
         // If the source batch iterator does not involve IO, mostly in-memory structures are used which we want to free
-        // as soon as possible. We do not want to throttle based on the targets node counter in such cases.
+        // as soon as possible. We do not want to throttle based on the targets node counter in such cases, but should
+        // should also not retry if target node is overloaded.
         Predicate<TReq> shouldPause = ignored -> true;
         if (batchIterator.involvesIO()) {
             shouldPause = ignored ->
                 nodeJobsCounter.getInProgressJobsForNode(localNodeId) >= MAX_NODE_CONCURRENT_OPERATIONS;
+            shouldRetry = true;
         }
 
         return new BatchIteratorBackpressureExecutor<>(
