@@ -21,7 +21,8 @@ Released on 2019/01/14.
     When restarting, CrateDB will migrate indexes to a newer format. Depending
     on the amount of data, this may delay node start-up time.
 
-    Please consult the :ref:`version_3.0.0_upgrade_notes` before upgrading.
+    Please consult the :ref:`3.3.0 upgrade notes
+    <version_3.3.0_upgrade_notes>` before upgrading.
 
 .. WARNING::
 
@@ -62,8 +63,8 @@ Fixes
 
 - The type of parameter placeholders in sub-queries in the FROM clause of a
   query can now be resolved to support PostgreSQL clients relying on the
-  ``ParameterDescription`` message. This enables queries like ``select * from
-  (select $1::int + $2) t``
+  ``ParameterDescription`` message. This enables queries like ``SELECT * FROM
+  (SELECT $1::int + $2) t``.
 
 - Fixed error readability of certain ``ALTER TABLE`` operations.
 

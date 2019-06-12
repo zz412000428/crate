@@ -13,7 +13,7 @@ else
 fi
 
 $PYTHON -m venv $DIR/.venv
-if [ ! -f $DIR/.venv/bin/pip ]; then
+if test ! -f $DIR/.venv/bin/pip; then
     wget https://bootstrap.pypa.io/get-pip.py
     $DIR/.venv/bin/python get-pip.py
     rm -f get-pip.py

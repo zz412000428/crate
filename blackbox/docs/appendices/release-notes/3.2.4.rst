@@ -21,7 +21,8 @@ Released on 2019/02/25.
     When restarting, CrateDB will migrate indexes to a newer format. Depending
     on the amount of data, this may delay node start-up time.
 
-    Please consult the :ref:`version_3.0.0_upgrade_notes` before upgrading.
+    Please consult the :ref:`3.3.0 upgrade notes
+    <version_3.3.0_upgrade_notes>` before upgrading.
 
 .. WARNING::
 
@@ -71,4 +72,5 @@ Fixes
 - Fixed an issue that caused inserts into partitioned tables where the
   partitioned column is generated and based on the child of an object to fail.
 
-- Fixed an issue that caused the Basic Authentication prompt to fail in Safari.
+- Fixed an issue that caused the *Basic Authentication* prompt to fail in
+  Safari.

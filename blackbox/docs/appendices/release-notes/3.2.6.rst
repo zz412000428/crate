@@ -21,7 +21,8 @@ Released on 2019/03/25.
     When restarting, CrateDB will migrate indexes to a newer format. Depending
     on the amount of data, this may delay node start-up time.
 
-    Please consult the :ref:`version_3.0.0_upgrade_notes` before upgrading.
+    Please consult the :ref:`3.3.0 upgrade notes
+    <version_3.3.0_upgrade_notes>` before upgrading.
 
 .. WARNING::
 
@@ -61,6 +62,6 @@ Fixes
 - Fixed an issue which causes sub-select queries with certain ``ORDER BY``
   constructs to fail.
 
-- Fixed circuit breaker memory accounting of window functions to prevent Out Of
-  Memory exceptions.
+- Fixed circuit breaker memory accounting of window functions to prevent *Out
+  Of Memory* exceptions.
 
