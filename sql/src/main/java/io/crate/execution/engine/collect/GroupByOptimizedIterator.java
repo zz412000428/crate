@@ -28,6 +28,7 @@ import io.crate.data.BatchIterator;
 import io.crate.data.CollectingBatchIterator;
 import io.crate.data.Row;
 import io.crate.data.RowN;
+import io.crate.exceptions.Exceptions;
 import io.crate.exceptions.GroupByOnArrayUnsupportedException;
 import io.crate.execution.dsl.phases.RoutedCollectPhase;
 import io.crate.execution.dsl.projection.GroupProjection;
@@ -78,6 +79,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -171,9 +174,14 @@ final class GroupByOptimizedIterator {
                 queryShardContext,
                 sharedShardContext.indexService().cache()
             );
+            AtomicReference<Throwable> killed = new AtomicReference<>();
+            AtomicBoolean closed = new AtomicBoolean();
             return CollectingBatchIterator.newInstance(
-                searcher::close,
-                t -> {},
+                () -> {
+                    closed.set(true);
+                    searcher.close();
+                },
+                killed::set,
                 () -> {
                     try {
                         return CompletableFuture.completedFuture(
@@ -187,7 +195,9 @@ final class GroupByOptimizedIterator {
                                     expressions,
                                     ramAccounting,
                                     inputRow,
-                                    queryContext
+                                    queryContext,
+                                    killed,
+                                    closed
                                 ),
                                 ramAccounting,
                                 aggregations,
@@ -258,7 +268,9 @@ final class GroupByOptimizedIterator {
                                                                        List<? extends LuceneCollectorExpression<?>> expressions,
                                                                        RamAccountingContext ramAccounting,
                                                                        InputRow inputRow,
-                                                                       LuceneQueryBuilder.Context queryContext) throws IOException {
+                                                                       LuceneQueryBuilder.Context queryContext,
+                                                                       AtomicReference<Throwable> killed,
+                                                                       AtomicBoolean closed) throws IOException {
         final Map<BytesRef, Object[]> statesByKey = new HashMap<>();
         IndexSearcher indexSearcher = searcher.searcher();
         final Weight weight = indexSearcher.createWeight(indexSearcher.rewrite(queryContext.query()), ScoreMode.COMPLETE, 1f);
@@ -267,6 +279,7 @@ final class GroupByOptimizedIterator {
         Object[] nullStates = null;
 
         for (LeafReaderContext leaf: leaves) {
+            raiseIfClosedOrKilled(killed, closed);
             Scorer scorer = weight.scorer(leaf);
             if (scorer == null) {
                 continue;
@@ -279,6 +292,7 @@ final class GroupByOptimizedIterator {
                 DocIdSetIterator docs = scorer.iterator();
                 Bits liveDocs = leaf.reader().getLiveDocs();
                 for (int doc = docs.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = docs.nextDoc()) {
+                    raiseIfClosedOrKilled(killed, closed);
                     if (docDeleted(liveDocs, doc)) {
                         continue;
                     }
@@ -308,6 +322,7 @@ final class GroupByOptimizedIterator {
                     }
                 }
                 for (long ord = 0; ord < statesByOrd.size(); ord++) {
+                    raiseIfClosedOrKilled(killed, closed);
                     Object[] states = statesByOrd.get(ord);
                     if (states == null) {
                         continue;
@@ -404,5 +419,15 @@ final class GroupByOptimizedIterator {
             return null;
         }
         return groupProjection;
+    }
+
+    private static void raiseIfClosedOrKilled(AtomicReference<Throwable> killed, AtomicBoolean closed) {
+        Throwable killedException = killed.get();
+        if (killedException != null) {
+            Exceptions.rethrowUnchecked(killedException);
+        }
+        if (closed.get()) {
+            throw new IllegalStateException("BatchIterator is closed");
+        }
     }
 }
