@@ -90,10 +90,12 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation {
                           Operation operation) throws UnsupportedOperationException, ColumnUnknownException {
         Field field = fields.get(path);
         if (field == null) {
-            ColumnIdent childPath = aliasToColumnMapping.getOrDefault(path, path);
-            Field originalField = relation.getField(childPath, operation);
-            if (originalField != null) {
-                field = new Field(this, path, originalField);
+            ColumnIdent originalPath = aliasToColumnMapping.get(path);
+            if (originalPath != null) {
+                Field originalField = relation.getField(originalPath, operation);
+                if (originalField != null) {
+                    fields.add(new Field(this, path, originalField));
+                }
             }
         }
         return field;

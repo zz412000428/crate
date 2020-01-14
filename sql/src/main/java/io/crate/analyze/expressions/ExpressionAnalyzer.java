@@ -137,6 +137,7 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -669,7 +670,15 @@ public class ExpressionAnalyzer {
                 }
             } else {
                 Symbol name;
-                name = fieldProvider.resolveField(qualifiedName, parts, operation);
+                try {
+                    name = fieldProvider.resolveField(qualifiedName, parts, operation);
+                } catch (ColumnUnknownException e) {
+                    Symbol rootSymbol = fieldProvider.resolveField(qualifiedName, Collections.emptyList(), operation);
+                    if (rootSymbol != null) {
+                        return createSubscript(rootSymbol, parts, context);
+                    }
+                    throw e;
+                }
                 Expression idxExpression = subscriptContext.index();
                 if (idxExpression != null) {
                     Symbol index = idxExpression.accept(this, context);
@@ -680,15 +689,24 @@ public class ExpressionAnalyzer {
         }
 
         private Symbol createSubscript(Symbol name, Symbol index, ExpressionAnalysisContext context) {
-            String function = name.valueType().id() == ObjectType.ID
+            if (name.valueType().id() == ObjectType.ID) {
                 // we don't know the the concrete object element (return) type
-                ? SubscriptObjectFunction.NAME
-                : SubscriptFunction.NAME;
-            return allocateFunction(function, ImmutableList.of(name, index), context);
+                DataType<?> returnType = DataTypes.UNDEFINED;
+                return allocateFunction(
+                    SubscriptObjectFunction.NAME,
+                    ImmutableList.of(name, Literal.of(returnType, null), index),
+                    context);
+            }
+            return allocateFunction(SubscriptFunction.NAME, ImmutableList.of(name, index), context);
         }
 
         private Symbol createSubscript(Symbol symbol, List<String> parts, ExpressionAnalysisContext context) {
+            assert symbol.valueType() instanceof ObjectType : "subscript_obj only works on objects";
+            ObjectType objectType = (ObjectType) symbol.valueType();
+            DataType<?> returnType = objectType.resolveInnerType(parts);
             List<Symbol> arguments = mapTail(symbol, parts, Literal::of);
+            // add the target type as 2nd argument, it will be used by the function resolver as the return type
+            arguments.add(1, Literal.of(returnType, null));
             return allocateFunction(SubscriptObjectFunction.NAME, arguments, context);
         }
 

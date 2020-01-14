@@ -85,7 +85,9 @@ public final class AnalyzedView implements AnalyzedRelation {
         if (operation != Operation.READ) {
             throw new UnsupportedOperationException("getField on AnalyzedView is only supported for READ operations");
         }
-        return fields.getWithSubscriptFallback(path, this, relation);
+        // No subscript expression fallback here as this is not guaranteed to work across relations. If the subscript
+        // isn't found as a direct view output, a subscript function is created inside the ExpressionAnalyzer.
+        return fields.get(path);
     }
 
     @Override

@@ -92,6 +92,9 @@ public final class RelationNormalizer {
         public AnalyzedRelation visitAliasedAnalyzedRelation(AliasedAnalyzedRelation relation,
                                                              CoordinatorTxnCtx context) {
             AnalyzedRelation analyzedRelation = process(relation.relation(), context);
+            if (relation.relation() == analyzedRelation) {
+                return relation;
+            }
             return new AliasedAnalyzedRelation(analyzedRelation, relation.getQualifiedName(), relation.columnAliases());
         }
 

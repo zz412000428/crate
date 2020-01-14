@@ -104,4 +104,16 @@ public class SubSelectGroupByIntegrationTest extends SQLTransportIntegrationTest
             is("1\n" +
                "2\n"));
     }
+
+    @Test
+    public void test_subscript_on_subrelation_supported_in_group_by() {
+        execute("create table tt1 (x object as (a int))");
+        execute("insert into tt1 (x) values ({a = 2}), ({a = 1}), ({a = 1})");
+        execute("refresh table tt1");
+        // must not throw an exception, subscript must be resolved (converted into subscript function)
+        execute("select x['a'], count(*) from (select * from tt1) tt2 group by 1 order by 2 desc");
+        assertThat(printedTable(response.rows()), is(
+            "1| 2\n" +
+            "2| 1\n"));
+    }
 }

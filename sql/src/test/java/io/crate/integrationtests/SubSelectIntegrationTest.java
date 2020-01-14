@@ -717,4 +717,16 @@ public class SubSelectIntegrationTest extends SQLTransportIntegrationTest {
         assertThat(printedTable(response.rows()), is("3\n" +
                                                      "2\n"));
     }
+
+    @Test
+    public void test_subscript_on_subrelation_supported_in_order_by() {
+        execute("create table t1 (x object as (a int), y text)");
+        execute("insert into t1 (x, y) values ({a = 2}, '2'), ({a = 1}, '1')");
+        execute("refresh table t1");
+        // must not throw an exception, subscript must be resolved (converted into subscript function)
+        execute("select x['a'], y from (select x, y from t1) t2 order by 1");
+        assertThat(printedTable(response.rows()), is(
+            "1| 1\n" +
+            "2| 2\n"));
+    }
 }

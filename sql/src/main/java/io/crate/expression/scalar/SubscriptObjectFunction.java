@@ -52,7 +52,7 @@ public class SubscriptObjectFunction extends Scalar<Object, Map> {
 
     public static final String NAME = "subscript_obj";
     private static final FuncParams FUNCTION_PARAMS = FuncParams
-        .builder(Param.of(ObjectType.untyped()), Param.of(StringType.INSTANCE))
+        .builder(Param.of(ObjectType.untyped()), Param.ANY, Param.of(StringType.INSTANCE))
         .withVarArgs(Param.of(StringType.INSTANCE))
         .build();
 
@@ -65,7 +65,7 @@ public class SubscriptObjectFunction extends Scalar<Object, Map> {
             public FunctionImplementation getForTypes(List<DataType> types) throws IllegalArgumentException {
                 return new SubscriptObjectFunction(new FunctionInfo(
                     new FunctionIdent(NAME, types),
-                    DataTypes.UNDEFINED
+                    types.get(1) // the 2nd argument is the return type, functions cannot be resolved by their return type
                 ));
             }
         });
@@ -92,7 +92,8 @@ public class SubscriptObjectFunction extends Scalar<Object, Map> {
     private static Symbol tryToInferReturnTypeFromObjectTypeAndArguments(Function func) {
         var arguments = func.arguments();
         ObjectType objectType = (ObjectType) arguments.get(0).valueType();
-        List<String> path = maybeCreatePath(arguments);
+        // path argument starting at pos 2 as the 2nd argument is the returnType (needed for function resolving)
+        List<String> path = maybeCreatePath(arguments.subList(2, arguments.size()));
         if (path == null) {
             return func;
         } else {
@@ -122,10 +123,10 @@ public class SubscriptObjectFunction extends Scalar<Object, Map> {
 
     @Override
     public Object evaluate(TransactionContext txnCtx, Input[] args) {
-        assert args.length >= 2 : "invalid number of arguments";
+        assert args.length >= 3 : "invalid number of arguments";
 
         Object mapValue = args[0].value();
-        for (var i = 1; i < args.length; i++) {
+        for (var i = 2; i < args.length; i++) {
             mapValue = evaluate(mapValue, args[i].value());
         }
         return mapValue;

@@ -40,6 +40,7 @@ import io.crate.metadata.FunctionInfo;
 import io.crate.metadata.GeneratedReference;
 import io.crate.metadata.Reference;
 import io.crate.types.DataType;
+import io.crate.types.ObjectType;
 import org.elasticsearch.common.inject.Singleton;
 
 import javax.annotation.Nullable;
@@ -236,10 +237,16 @@ public final class InputColumns extends DefaultTraversalSymbolVisitor<InputColum
             return ref;
         }
 
-        DataType returnType = ref.valueType();
+        if (ref.valueType().id() != ObjectType.ID) {
+            return null;
+        }
+        ObjectType returnType = (ObjectType) ref.valueType();
         List<String> path = ref.column().path();
 
         List<Symbol> arguments = mapTail(rootIC, path, Literal::of);
+        // add the target type as 2nd argument, it will be used by the function resolver as the return type
+        arguments.add(1, Literal.of(returnType.resolveInnerType(path), null));
+
         List<DataType> argumentTypes = Symbols.typeView(arguments);
 
         return new Function(

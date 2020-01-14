@@ -257,6 +257,10 @@ Others
 Fixes
 =====
 
+- Fixed support for using subscript expressions on sub-relations as ordering or
+  grouping symbols, an exception was raised before. Example:
+  ``SELECT ... FROM <SUB-SELECT-OR-VIEW> ORDER BY a['b']``
+
 - Fixed an issue that prevented statements from showing up in ``sys.jobs_log``
   if they run into an error.
 
