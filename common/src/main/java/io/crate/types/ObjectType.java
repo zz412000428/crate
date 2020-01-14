@@ -64,6 +64,14 @@ public class ObjectType extends DataType<Map<String, Object>> implements Streame
         return new Builder();
     }
 
+    public static DataType<?> resolveInnerType(DataType<?> dataType, List<String> path) {
+        dataType = ArrayType.unnest(dataType);
+        if (dataType.id() != ID) {
+            return DataTypes.UNDEFINED;
+        }
+        return ((ObjectType) dataType).resolveInnerType(path);
+    }
+
     private ImmutableMap<String, DataType<?>> innerTypes;
 
     /**

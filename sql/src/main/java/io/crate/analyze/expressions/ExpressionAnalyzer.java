@@ -669,16 +669,33 @@ public class ExpressionAnalyzer {
                     return createSubscript(name, parts, context);
                 }
             } else {
-                Symbol name;
-                try {
-                    name = fieldProvider.resolveField(qualifiedName, parts, operation);
-                } catch (ColumnUnknownException e) {
-                    Symbol rootSymbol = fieldProvider.resolveField(qualifiedName, Collections.emptyList(), operation);
-                    if (rootSymbol != null) {
-                        return createSubscript(rootSymbol, parts, context);
+                List<String> path;
+                List<String> newPath = Collections.emptyList();
+                Symbol name = null;
+                RuntimeException lastException = null;
+                for (int i = parts.size(); i >= 0; i--) {
+                    path = parts.subList(0, i);
+                    try {
+                        name = fieldProvider.resolveField(qualifiedName, path, operation);
+                        break;
+                    } catch (RuntimeException e) {
+                        if (path.isEmpty()) {
+                            throw lastException == null ? e : lastException;
+                        }
+                        lastException = e;
                     }
-                    throw e;
+                    newPath = parts.subList(i - 1, parts.size());
                 }
+                if (name != null && lastException != null && newPath.isEmpty() == false) {
+                    // InnerTypes of object columns must be available in this scope. If not, the subscript won't work
+                    // as well, so throw the last exception occurred while trying to resolve the path.
+
+                    if (ObjectType.resolveInnerType(name.valueType(), newPath) == DataTypes.UNDEFINED) {
+                        throw lastException;
+                    }
+                    return createSubscript(name, newPath, context);
+                }
+
                 Expression idxExpression = subscriptContext.index();
                 if (idxExpression != null) {
                     Symbol index = idxExpression.accept(this, context);
@@ -689,25 +706,34 @@ public class ExpressionAnalyzer {
         }
 
         private Symbol createSubscript(Symbol name, Symbol index, ExpressionAnalysisContext context) {
-            if (name.valueType().id() == ObjectType.ID) {
+            String function = name.valueType().id() == ObjectType.ID
                 // we don't know the the concrete object element (return) type
-                DataType<?> returnType = DataTypes.UNDEFINED;
-                return allocateFunction(
-                    SubscriptObjectFunction.NAME,
-                    ImmutableList.of(name, Literal.of(returnType, null), index),
-                    context);
-            }
-            return allocateFunction(SubscriptFunction.NAME, ImmutableList.of(name, index), context);
+                ? SubscriptObjectFunction.NAME
+                : SubscriptFunction.NAME;
+            return allocateFunction(function, ImmutableList.of(name, index), context);
         }
 
         private Symbol createSubscript(Symbol symbol, List<String> parts, ExpressionAnalysisContext context) {
-            assert symbol.valueType() instanceof ObjectType : "subscript_obj only works on objects";
-            ObjectType objectType = (ObjectType) symbol.valueType();
+            DataType<?> symbolType = symbol.valueType();
+            boolean isArray = false;
+            if (symbolType.id() == ArrayType.ID) {
+                symbolType = ArrayType.unnest(symbolType);
+                isArray = true;
+            }
+            assert symbolType.id() == ObjectType.ID : "subscript_obj only works on objects/object_arrays, given: " + symbolType;
+            ObjectType objectType = (ObjectType) symbolType;
             DataType<?> returnType = objectType.resolveInnerType(parts);
             List<Symbol> arguments = mapTail(symbol, parts, Literal::of);
-            // add the target type as 2nd argument, it will be used by the function resolver as the return type
+            if (returnType == DataTypes.UNDEFINED) {
+                return allocateFunction(SubscriptObjectFunction.NAME, arguments, context);
+            }
+            if (isArray) {
+                returnType = new ArrayType<>(returnType);
+            }
+            // add the target type as 2nd argument if is defined.
+            // it will be used by the function resolver as the return type
             arguments.add(1, Literal.of(returnType, null));
-            return allocateFunction(SubscriptObjectFunction.NAME, arguments, context);
+            return allocateFunction(SubscriptObjectFunction.NAME_RETURN_TYPE_IN_ARGUMENTS, arguments, context);
         }
 
         @Override

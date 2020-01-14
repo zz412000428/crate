@@ -34,6 +34,7 @@ import io.crate.metadata.Scalar;
 import io.crate.metadata.TransactionContext;
 import io.crate.metadata.functions.params.FuncParams;
 import io.crate.metadata.functions.params.Param;
+import io.crate.types.ArrayType;
 import io.crate.types.DataType;
 import io.crate.types.DataTypes;
 import io.crate.types.ObjectType;
@@ -51,28 +52,60 @@ import java.util.Map;
 public class SubscriptObjectFunction extends Scalar<Object, Map> {
 
     public static final String NAME = "subscript_obj";
+    public static final String NAME_RETURN_TYPE_IN_ARGUMENTS = "_subscript_obj";
     private static final FuncParams FUNCTION_PARAMS = FuncParams
         .builder(Param.of(ObjectType.untyped()), Param.ANY, Param.of(StringType.INSTANCE))
         .withVarArgs(Param.of(StringType.INSTANCE))
         .build();
+    private static final FuncParams FUNCTION_PARAMS_ARRAY = FuncParams
+        .builder(Param.of(DataTypes.OBJECT_ARRAY), Param.ANY_ARRAY, Param.of(StringType.INSTANCE))
+        .withVarArgs(Param.of(StringType.INSTANCE))
+        .build();
+    private static final FuncParams FUNCTION_PARAMS_RETURN_TYPE_UNKNOWN = FuncParams
+        .builder(Param.of(ObjectType.untyped()), Param.of(StringType.INSTANCE))
+        .withVarArgs(Param.of(StringType.INSTANCE))
+        .build();
 
     private FunctionInfo info;
+    private boolean returnTypeInArguments;
 
     public static void register(ScalarFunctionModule module) {
-        module.register(NAME, new BaseFunctionResolver(FUNCTION_PARAMS) {
-
+        module.register(NAME_RETURN_TYPE_IN_ARGUMENTS, new BaseFunctionResolver(FUNCTION_PARAMS) {
             @Override
             public FunctionImplementation getForTypes(List<DataType> types) throws IllegalArgumentException {
-                return new SubscriptObjectFunction(new FunctionInfo(
-                    new FunctionIdent(NAME, types),
-                    types.get(1) // the 2nd argument is the return type, functions cannot be resolved by their return type
-                ));
+                return createWithReturnTypeUsedFromArguments(types);
+            }
+        });
+        module.register(NAME_RETURN_TYPE_IN_ARGUMENTS, new BaseFunctionResolver(FUNCTION_PARAMS_ARRAY) {
+            @Override
+            public FunctionImplementation getForTypes(List<DataType> types) throws IllegalArgumentException {
+                return createWithReturnTypeUsedFromArguments(types);
+            }
+        });
+        module.register(NAME, new BaseFunctionResolver(FUNCTION_PARAMS_RETURN_TYPE_UNKNOWN) {
+            @Override
+            public FunctionImplementation getForTypes(List<DataType> types) throws IllegalArgumentException {
+                return new SubscriptObjectFunction(
+                    new FunctionInfo(new FunctionIdent(NAME, types), DataTypes.UNDEFINED),
+                    false);
             }
         });
     }
 
+    private static FunctionImplementation createWithReturnTypeUsedFromArguments(List<DataType> types) {
+        return new SubscriptObjectFunction(new FunctionInfo(
+            new FunctionIdent(NAME_RETURN_TYPE_IN_ARGUMENTS, types),
+            types.get(1) // the 2nd argument is the return type, functions cannot be resolved by their return type
+        ));
+    }
+
     private SubscriptObjectFunction(FunctionInfo info) {
+        this(info, true);
+    }
+
+    private SubscriptObjectFunction(FunctionInfo info, boolean returnTypeInArguments) {
         this.info = info;
+        this.returnTypeInArguments = returnTypeInArguments;
     }
 
     @Override
@@ -86,18 +119,26 @@ public class SubscriptObjectFunction extends Scalar<Object, Map> {
         if (result instanceof Literal) {
             return result;
         }
-        return tryToInferReturnTypeFromObjectTypeAndArguments(func);
+        return returnTypeInArguments ? func : tryToInferReturnTypeFromObjectTypeAndArguments(func);
     }
 
     private static Symbol tryToInferReturnTypeFromObjectTypeAndArguments(Function func) {
         var arguments = func.arguments();
-        ObjectType objectType = (ObjectType) arguments.get(0).valueType();
-        // path argument starting at pos 2 as the 2nd argument is the returnType (needed for function resolving)
-        List<String> path = maybeCreatePath(arguments.subList(2, arguments.size()));
+        DataType<?> symbolType = arguments.get(0).valueType();
+        boolean isArray = false;
+        if (symbolType.id() == ArrayType.ID) {
+            isArray = true;
+            symbolType = ArrayType.unnest(symbolType);
+        }
+        ObjectType objectType = (ObjectType) symbolType;
+        List<String> path = maybeCreatePath(arguments);
         if (path == null) {
             return func;
         } else {
             DataType<?> returnType = objectType.resolveInnerType(path);
+            if (isArray) {
+                returnType = new ArrayType<>(returnType);
+            }
             return returnType.equals(DataTypes.UNDEFINED)
                 ? func
                 : new Function(new FunctionInfo(func.info().ident(), returnType), func.arguments());
@@ -123,10 +164,11 @@ public class SubscriptObjectFunction extends Scalar<Object, Map> {
 
     @Override
     public Object evaluate(TransactionContext txnCtx, Input[] args) {
-        assert args.length >= 3 : "invalid number of arguments";
+        int pathStart = returnTypeInArguments ? 2 : 1;
+        assert args.length >= 1 + pathStart : "invalid number of arguments";
 
         Object mapValue = args[0].value();
-        for (var i = 2; i < args.length; i++) {
+        for (var i = pathStart; i < args.length; i++) {
             mapValue = evaluate(mapValue, args[i].value());
         }
         return mapValue;

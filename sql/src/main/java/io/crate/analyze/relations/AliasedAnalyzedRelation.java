@@ -94,7 +94,8 @@ public class AliasedAnalyzedRelation implements AnalyzedRelation {
             if (originalPath != null) {
                 Field originalField = relation.getField(originalPath, operation);
                 if (originalField != null) {
-                    fields.add(new Field(this, path, originalField));
+                    field = new Field(this, path, originalField);
+                    fields.add(field);
                 }
             }
         }

@@ -285,7 +285,7 @@ public class DocIndexMetaData {
         DataType type;
         String typeName = (String) columnProperties.get("type");
 
-        if (typeName == null) {
+        if (typeName == null || typeName.equalsIgnoreCase("object")) {
             Map<String, Object> innerProperties = (Map<String, Object>) columnProperties.get("properties");
             if (innerProperties != null) {
                 ObjectType.Builder builder = ObjectType.builder();
