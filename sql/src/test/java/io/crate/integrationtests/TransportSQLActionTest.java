@@ -1707,4 +1707,11 @@ public class TransportSQLActionTest extends SQLTransportIntegrationTest {
         // not supported by the TopFieldCollector
         execute("select x from tbl where x > 5000 order by x limit 1500");
     }
+
+
+    @Test
+    public void test_foo() {
+        execute("create table tbl (obj object as (x int))");
+        execute("select obj['x'] from (select obj from tbl) as t group by obj['x']");
+    }
 }

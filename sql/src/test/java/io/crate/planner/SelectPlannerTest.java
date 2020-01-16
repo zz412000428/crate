@@ -25,7 +25,9 @@ package io.crate.planner;
 import com.carrotsearch.hppc.IntIndexedContainer;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.google.common.collect.Iterables;
+import io.crate.analyze.AnalyzedStatement;
 import io.crate.analyze.TableDefinitions;
+import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.exceptions.UnsupportedFeatureException;
 import io.crate.exceptions.VersioninigValidationException;
 import io.crate.execution.dsl.phases.ExecutionPhase;
@@ -903,6 +905,22 @@ public class SelectPlannerTest extends CrateDummyClusterServiceUnitTest {
             "RootBoundary[id, name]\n" +
             "TopNDistinct[1 | [id, name]\n" +
             "Collect[doc.users | [id, name] | All]\n"
+        ));
+    }
+
+    @Test
+    public void test_foo() {
+        String stmt = "SELECT address['postcode'] FROM (SELECT address FROM users) AS u GROUP BY 1";
+        AnalyzedStatement analyzedStatement = e.analyze(stmt);
+        AnalyzedRelation normalizedStatement = e.normalize(stmt);
+        LogicalPlan plan = e.logicalPlan(stmt);
+        assertThat(plan, isPlan(e.functions(),
+            "RootBoundary[address['postcode']]\n" +
+            "GroupBy[address['postcode'] | ]\n" +
+            "Boundary[_fetchid]\n" +
+            "Boundary[_fetchid]\n" +
+            "FetchOrEval[_fetchid]\n" +
+            "Collect[doc.users | [_fetchid, address['postcode']] | All]\n"
         ));
     }
 }

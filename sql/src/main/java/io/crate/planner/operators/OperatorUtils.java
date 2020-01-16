@@ -33,6 +33,7 @@ import io.crate.common.collections.Lists2;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -108,7 +109,13 @@ public final class OperatorUtils {
             if (mapped != null) {
                 return mapped;
             }
-            mapped = FieldReplacer.replaceFields(s, f -> mapping.getOrDefault(f, f));
+            mapped = FieldReplacer.replaceFields(s, f -> {
+                Symbol mappedSymbol = mapping.get(f);
+                if (mappedSymbol == null && !f.path().isTopLevel()) {
+                    return f;
+                }
+                return Objects.requireNonNullElse(mappedSymbol, f);
+            });
             if (mapped != s) {
                 return mapped;
             }
