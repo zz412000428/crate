@@ -909,7 +909,7 @@ public class SelectPlannerTest extends CrateDummyClusterServiceUnitTest {
     }
 
     @Test
-    public void test_foo() {
+    public void test_group_by_on_subscript_on_obj_output_of_sub_relation() {
         String stmt = "SELECT address['postcode'] FROM (SELECT address FROM users) AS u GROUP BY 1";
         AnalyzedStatement analyzedStatement = e.analyze(stmt);
         AnalyzedRelation normalizedStatement = e.normalize(stmt);
@@ -917,10 +917,9 @@ public class SelectPlannerTest extends CrateDummyClusterServiceUnitTest {
         assertThat(plan, isPlan(e.functions(),
             "RootBoundary[address['postcode']]\n" +
             "GroupBy[address['postcode'] | ]\n" +
-            "Boundary[_fetchid]\n" +
-            "Boundary[_fetchid]\n" +
-            "FetchOrEval[_fetchid]\n" +
-            "Collect[doc.users | [_fetchid, address['postcode']] | All]\n"
+            "Boundary[address]\n" +
+            "Boundary[address]\n" +
+            "Collect[doc.users | [address] | All]\n"
         ));
     }
 }

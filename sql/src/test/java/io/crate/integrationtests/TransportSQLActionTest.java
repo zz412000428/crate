@@ -1712,6 +1712,9 @@ public class TransportSQLActionTest extends SQLTransportIntegrationTest {
     @Test
     public void test_foo() {
         execute("create table tbl (obj object as (x int))");
+        execute("insert into tbl (obj) values ({x=10})");
+        execute("refresh table tbl");
         execute("select obj['x'] from (select obj from tbl) as t group by obj['x']");
+        assertThat(printedTable(response.rows()), is("10\n"));
     }
 }
