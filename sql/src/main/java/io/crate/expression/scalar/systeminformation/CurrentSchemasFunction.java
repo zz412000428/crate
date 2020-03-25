@@ -30,12 +30,15 @@ import io.crate.metadata.FunctionInfo;
 import io.crate.metadata.FunctionName;
 import io.crate.metadata.Scalar;
 import io.crate.metadata.TransactionContext;
+import io.crate.metadata.functions.Signature;
 import io.crate.metadata.pgcatalog.PgCatalogSchemaInfo;
 import io.crate.types.DataTypes;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import static io.crate.types.TypeSignature.parseTypeSignature;
 
 public class CurrentSchemasFunction extends Scalar<List<String>, Boolean> {
 
@@ -49,7 +52,14 @@ public class CurrentSchemasFunction extends Scalar<List<String>, Boolean> {
         Collections.emptySet());
 
     public static void register(ScalarFunctionModule module) {
-        module.register(new CurrentSchemasFunction());
+        module.register(
+            Signature.scalar(
+                FQN,
+                parseTypeSignature("boolean"),
+                parseTypeSignature("text")
+            ),
+            args -> new CurrentSchemasFunction()
+        );
     }
 
     @Override

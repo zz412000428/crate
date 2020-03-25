@@ -29,18 +29,29 @@ import io.crate.metadata.FunctionInfo;
 import io.crate.metadata.FunctionName;
 import io.crate.metadata.TransactionContext;
 import io.crate.metadata.Scalar;
+import io.crate.metadata.functions.Signature;
 import io.crate.metadata.pgcatalog.PgCatalogSchemaInfo;
 import io.crate.types.DataTypes;
 
 import java.util.Arrays;
+
+import static io.crate.types.TypeSignature.parseTypeSignature;
 
 public class PgGetExpr extends Scalar<String, Object> {
 
     public static final String NAME = "pg_get_expr";
     private static final FunctionName FQN = new FunctionName(PgCatalogSchemaInfo.NAME, NAME);
 
-    public static void register(ScalarFunctionModule scalarFunctionModule) {
-        scalarFunctionModule.register(new PgGetExpr());
+    public static void register(ScalarFunctionModule module) {
+        module.register(
+            Signature.scalar(
+                FQN,
+                parseTypeSignature("text"),
+                parseTypeSignature("integer"),
+                parseTypeSignature("text")
+            ),
+            args -> new PgGetExpr()
+        );
     }
 
     @Override

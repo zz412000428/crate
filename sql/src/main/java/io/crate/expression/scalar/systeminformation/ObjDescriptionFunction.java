@@ -24,20 +24,19 @@ package io.crate.expression.scalar.systeminformation;
 
 import io.crate.data.Input;
 import io.crate.expression.scalar.ScalarFunctionModule;
-import io.crate.metadata.BaseFunctionResolver;
 import io.crate.metadata.FunctionIdent;
-import io.crate.metadata.FunctionImplementation;
 import io.crate.metadata.FunctionInfo;
 import io.crate.metadata.FunctionName;
 import io.crate.metadata.Scalar;
 import io.crate.metadata.TransactionContext;
-import io.crate.metadata.functions.params.FuncParams;
-import io.crate.metadata.functions.params.Param;
+import io.crate.metadata.functions.Signature;
 import io.crate.metadata.pgcatalog.PgCatalogSchemaInfo;
 import io.crate.types.DataType;
 import io.crate.types.DataTypes;
 
 import java.util.List;
+
+import static io.crate.types.TypeSignature.parseTypeSignature;
 
 public final class ObjDescriptionFunction extends Scalar<String, Object> {
 
@@ -46,12 +45,15 @@ public final class ObjDescriptionFunction extends Scalar<String, Object> {
     private final FunctionInfo info;
 
     public static void register(ScalarFunctionModule module) {
-        module.register(FQN, new BaseFunctionResolver(FuncParams.builder(Param.NUMERIC, Param.STRING).build()) {
-            @Override
-            public FunctionImplementation getForTypes(List<DataType> types) throws IllegalArgumentException {
-                return new ObjDescriptionFunction(types);
-            }
-        });
+        module.register(
+            Signature.scalar(
+                FQN,
+                parseTypeSignature("integer"),
+                parseTypeSignature("text"),
+                parseTypeSignature("text")
+            ),
+            ObjDescriptionFunction::new
+        );
     }
 
     public ObjDescriptionFunction(List<DataType> argumentTypes) {

@@ -33,11 +33,14 @@ import io.crate.metadata.FunctionInfo;
 import io.crate.metadata.FunctionName;
 import io.crate.metadata.Scalar;
 import io.crate.metadata.TransactionContext;
+import io.crate.metadata.functions.Signature;
 import io.crate.metadata.pgcatalog.PgCatalogSchemaInfo;
 import io.crate.types.DataTypes;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
+
+import static io.crate.types.TypeSignature.parseTypeSignature;
 
 
 public class CurrentSchemaFunction extends Scalar<String, Object> {
@@ -52,8 +55,11 @@ public class CurrentSchemaFunction extends Scalar<String, Object> {
         FunctionInfo.Type.SCALAR,
         Collections.emptySet());
 
-    public static void register(ScalarFunctionModule scalarFunctionModule) {
-        scalarFunctionModule.register(new CurrentSchemaFunction());
+    public static void register(ScalarFunctionModule module) {
+        module.register(
+            Signature.scalar(FQN, parseTypeSignature("text")),
+            args -> new CurrentSchemaFunction()
+        );
     }
 
     @Override
