@@ -78,6 +78,10 @@ public final class Signature {
         return new Builder();
     }
 
+    public static Builder builder(Signature signature) {
+        return new Builder(signature);
+    }
+
     public static class Builder {
         private FunctionName name;
         private FunctionInfo.Type kind;
@@ -87,6 +91,20 @@ public final class Signature {
         private List<TypeSignature> variableArityGroup = Collections.emptyList();
         private boolean variableArity = false;
         private boolean allowCoercion = true;
+
+        public Builder() {
+        }
+
+        public Builder(Signature signature) {
+            name = signature.getName();
+            kind = signature.getKind();
+            argumentTypes = signature.getArgumentTypes();
+            returnType = signature.getReturnType();
+            typeVariableConstraints = signature.getTypeVariableConstraints();
+            variableArityGroup = signature.getVariableArityGroup();
+            variableArity = signature.isVariableArity();
+            allowCoercion = signature.isCoercionAllowed();
+        }
 
         public Builder name(String name) {
             return name(new FunctionName(null, name));
@@ -223,5 +241,11 @@ public final class Signature {
 
         return name + (allConstraints.isEmpty() ? "" : "<" + String.join(",", allConstraints) + ">") +
                "(" + Lists2.joinOn(",", argumentTypes, TypeSignature::toString) + "):" + returnType;
+    }
+
+    public Signature withTypeVariableConstraints(TypeVariableConstraint... typeVariableConstraints) {
+        return Signature.builder(this)
+            .typeVariableConstraints(typeVariableConstraints)
+            .build();
     }
 }
