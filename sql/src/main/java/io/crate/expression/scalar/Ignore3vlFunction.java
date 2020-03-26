@@ -25,11 +25,14 @@ package io.crate.expression.scalar;
 import io.crate.data.Input;
 import io.crate.metadata.FunctionIdent;
 import io.crate.metadata.FunctionInfo;
-import io.crate.metadata.TransactionContext;
 import io.crate.metadata.Scalar;
+import io.crate.metadata.TransactionContext;
+import io.crate.metadata.functions.Signature;
 import io.crate.types.DataTypes;
 
 import java.util.Collections;
+
+import static io.crate.types.TypeSignature.parseTypeSignature;
 
 /**
  * This scalar function removes the 3-valued logic from the tree of operators below it.
@@ -50,7 +53,14 @@ public class Ignore3vlFunction extends Scalar<Boolean, Boolean> {
         new FunctionIdent(NAME, Collections.singletonList(DataTypes.BOOLEAN)), DataTypes.BOOLEAN);
 
     public static void register(ScalarFunctionModule module) {
-        module.register(new Ignore3vlFunction());
+        module.register(
+            Signature.scalar(
+                NAME,
+                parseTypeSignature("boolean"),
+                parseTypeSignature("boolean")
+            ),
+            argumentTypes -> new Ignore3vlFunction()
+        );
     }
 
     @Override

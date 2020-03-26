@@ -248,4 +248,10 @@ public final class Signature {
             .typeVariableConstraints(typeVariableConstraints)
             .build();
     }
+
+    public Signature withVariableArity() {
+        return Signature.builder(this)
+            .setVariableArity(true)
+            .build();
+    }
 }
