@@ -68,10 +68,8 @@ public class SubscriptFunctionTest extends AbstractScalarFunctionsTest {
     }
 
     @Test
-    public void testIndexExpressionIsNotInteger() throws Exception {
-        expectedException.expectMessage(
-            "`index` in subscript expression (`base[index]`) " +
-            "must be a numeric type if the base expression is text_array");
-        assertNormalize("subscript(['Youri', 'Ruben'], '1')", isLiteral("Ruben"));
+    public void testIndexExpressionIsNotConvertibleToInteger() throws Exception {
+        expectedException.expectMessage("Cannot cast `'foo'` of type `text` to type `integer`");
+        assertNormalize("subscript(['Youri', 'Ruben'], 'foo')", isLiteral("Ruben"));
     }
 }

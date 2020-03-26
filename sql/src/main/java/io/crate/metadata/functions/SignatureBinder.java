@@ -79,7 +79,7 @@ public class SignatureBinder {
     }
 
     @Nullable
-    BoundVariables bindVariables(List<TypeSignature> actualArgumentTypes) {
+    public BoundVariables bindVariables(List<TypeSignature> actualArgumentTypes) {
         ArrayList<TypeConstraintSolver> constraintSolvers = new ArrayList<>();
         if (!appendConstraintSolversForArguments(constraintSolvers, actualArgumentTypes)) {
             return null;
@@ -221,6 +221,9 @@ public class SignatureBinder {
             TypeVariableConstraint typeVariableConstraint = typeVariableConstraints.get(formalTypeSignature.getBaseTypeName());
             if (typeVariableConstraint == null) {
                 return true;
+            }
+            if (typeVariableConstraint.getExcludedTypes().contains(actualTypeSignature)) {
+                return false;
             }
             resultBuilder.add(new TypeParameterSolver(formalTypeSignature.getBaseTypeName(), actualTypeSignature.createType()));
             return true;

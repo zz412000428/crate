@@ -22,23 +22,28 @@
 
 package io.crate.metadata.functions;
 
+import io.crate.types.TypeSignature;
+
+import java.util.List;
 import java.util.Objects;
 
 public class TypeVariableConstraint {
 
     public static TypeVariableConstraint typeVariable(String name) {
-        return new TypeVariableConstraint(name, false);
+        return new TypeVariableConstraint(name, List.of(), false);
     }
 
     public static TypeVariableConstraint typeVariableOfAnyType(String name) {
-        return new TypeVariableConstraint(name, true);
+        return new TypeVariableConstraint(name, List.of(), true);
     }
 
     private final String name;
+    private final List<TypeSignature> excludedTypes;
     private final boolean anyAllowed;
 
-    private TypeVariableConstraint(String name, boolean anyAllowed) {
+    public TypeVariableConstraint(String name, List<TypeSignature> excludedTypes, boolean anyAllowed) {
         this.name = name;
+        this.excludedTypes = excludedTypes;
         this.anyAllowed = anyAllowed;
     }
 
@@ -46,8 +51,16 @@ public class TypeVariableConstraint {
         return name;
     }
 
+    public List<TypeSignature> getExcludedTypes() {
+        return excludedTypes;
+    }
+
     public boolean isAnyAllowed() {
         return anyAllowed;
+    }
+
+    public TypeVariableConstraint withExcludedTypes(TypeSignature... excludedTypes) {
+        return new TypeVariableConstraint(name, List.of(excludedTypes), anyAllowed);
     }
 
     @Override

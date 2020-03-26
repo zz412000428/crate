@@ -25,26 +25,35 @@ package io.crate.metadata;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Ordering;
 import io.crate.common.collections.Lists2;
 import io.crate.expression.symbol.FuncArg;
+import io.crate.metadata.functions.BoundVariables;
 import io.crate.metadata.functions.Signature;
 import io.crate.metadata.functions.SignatureBinder;
 import io.crate.metadata.functions.params.FuncParams;
 import io.crate.types.DataType;
+import io.crate.types.DataTypes;
 import io.crate.types.TypeSignature;
 import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.inject.Inject;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+
+import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.collect.Iterables.getOnlyElement;
 
 public class Functions {
 
@@ -256,16 +265,36 @@ public class Functions {
     private static FunctionImplementation matchFunctionCandidates(List<FuncResolver> candidates,
                                                                   List<DataType> argumentTypes,
                                                                   boolean allowCoercion) {
+        if (candidates.isEmpty()) {
+            return null;
+        }
+
+        List<ApplicableFunction> applicableFunctions = new ArrayList<>();
         for (FuncResolver candidate : candidates) {
             Signature boundSignature = new SignatureBinder(candidate.getSignature(), allowCoercion)
                 .bind(argumentTypes);
             if (boundSignature != null) {
-                return candidate.apply(Lists2.map(boundSignature.getArgumentTypes(), TypeSignature::createType));
+                applicableFunctions.add(
+                    new ApplicableFunction(
+                        candidate.getSignature(),
+                        boundSignature,
+                        candidate.getFactory()
+                    )
+                );
             }
         }
+
+        if (allowCoercion) {
+            applicableFunctions = selectMostSpecificFunctions(applicableFunctions, argumentTypes);
+            checkState(!applicableFunctions.isEmpty(), "at least single function must be left");
+        }
+
+        if (applicableFunctions.size() == 1) {
+            return getOnlyElement(applicableFunctions).get();
+        }
+
         return null;
     }
-
 
     /**
      * Returns the user-defined function implementation for the given function name and argTypes.
@@ -391,6 +420,147 @@ public class Functions {
                 }
             }
             return null;
+        }
+    }
+
+    private static List<ApplicableFunction> selectMostSpecificFunctions(List<ApplicableFunction> applicableFunctions,
+                                                                        List<DataType> argumentTypes) {
+        if (applicableFunctions.isEmpty()) {
+            return applicableFunctions;
+        }
+
+        List<ApplicableFunction> mostSpecificFunctions = selectMostSpecificFunctions(applicableFunctions);
+        if (mostSpecificFunctions.size() <= 1) {
+            return mostSpecificFunctions;
+        }
+
+        boolean someArgumentTypeIsUnknown = argumentTypes.stream().anyMatch(type -> type.equals(DataTypes.UNDEFINED));
+        if (!someArgumentTypeIsUnknown) {
+            // give up and return all remaining matches
+            return mostSpecificFunctions;
+        }
+
+        // look for functions that only cast the unknown arguments
+        List<ApplicableFunction> unknownOnlyCastFunctions = getUnknownOnlyCastFunctions(applicableFunctions, argumentTypes);
+        if (!unknownOnlyCastFunctions.isEmpty()) {
+            mostSpecificFunctions = unknownOnlyCastFunctions;
+            if (mostSpecificFunctions.size() == 1) {
+                return mostSpecificFunctions;
+            }
+        }
+
+        // If the return type for all the selected function is the same
+        // all the functions are semantically the same. We can return just any of those.
+        if (returnTypeIsTheSame(mostSpecificFunctions)) {
+            // make it deterministic
+            ApplicableFunction selectedFunction = Ordering.usingToString()
+                .reverse()
+                .sortedCopy(mostSpecificFunctions)
+                .get(0);
+            return List.of(selectedFunction);
+        }
+
+        return mostSpecificFunctions;
+    }
+
+    private static List<ApplicableFunction> selectMostSpecificFunctions(List<ApplicableFunction> candidates) {
+        List<ApplicableFunction> representatives = new ArrayList<>();
+
+        for (ApplicableFunction current : candidates) {
+            boolean found = false;
+            for (int i = 0; i < representatives.size(); i++) {
+                ApplicableFunction representative = representatives.get(i);
+                if (isMoreSpecificThan(current, representative)) {
+                    representatives.set(i, current);
+                }
+                if (isMoreSpecificThan(current, representative) || isMoreSpecificThan(representative, current)) {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                representatives.add(current);
+            }
+        }
+
+        return representatives;
+    }
+
+    /**
+     * One method is more specific than another if invocation handled by the first method
+     * could be passed on to the other one.
+     */
+    private static boolean isMoreSpecificThan(ApplicableFunction left, ApplicableFunction right) {
+        List<TypeSignature> resolvedTypes = left.getBoundSignature().getArgumentTypes();
+        BoundVariables boundVariables = new SignatureBinder(right.getDeclaredSignature(), true)
+            .bindVariables(resolvedTypes);
+        return boundVariables != null;
+    }
+
+    private static List<ApplicableFunction> getUnknownOnlyCastFunctions(List<ApplicableFunction> applicableFunction,
+                                                                        List<DataType> actualArgumentTypes) {
+        return applicableFunction.stream()
+            .filter((function) -> onlyCastsUnknown(function, actualArgumentTypes))
+            .collect(Collectors.toUnmodifiableList());
+    }
+
+    private static boolean onlyCastsUnknown(ApplicableFunction applicableFunction,
+                                            List<DataType> actualArgumentTypes) {
+        List<DataType<?>> boundTypes = Lists2.map(applicableFunction.getBoundSignature().getArgumentTypes(), TypeSignature::createType);
+        if (actualArgumentTypes.size() == boundTypes.size()) {
+            throw new IllegalStateException("Type lists of the unbound and bound signature are of different lengths");
+        }
+        for (int i = 0; i < actualArgumentTypes.size(); i++) {
+            if (!boundTypes.get(i).equals(actualArgumentTypes.get(i))
+                && actualArgumentTypes.get(i).id() != DataTypes.UNDEFINED.id()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean returnTypeIsTheSame(List<ApplicableFunction> applicableFunctions) {
+        Set<DataType<?>> returnTypes = applicableFunctions.stream()
+            .map(function -> function.getBoundSignature().getReturnType().createType())
+            .collect(Collectors.toSet());
+        return returnTypes.size() == 1;
+    }
+
+    private static class ApplicableFunction implements Supplier<FunctionImplementation> {
+
+        private final Signature declaredSignature;
+        private final Signature boundSignature;
+        private final Function<List<DataType>, FunctionImplementation> factory;
+
+        public ApplicableFunction(Signature declaredSignature,
+                                  Signature boundSignature,
+                                  Function<List<DataType>, FunctionImplementation> factory) {
+            this.declaredSignature = declaredSignature;
+            this.boundSignature = boundSignature;
+            this.factory = factory;
+        }
+
+        public Signature getDeclaredSignature() {
+            return declaredSignature;
+        }
+
+        public Signature getBoundSignature() {
+            return boundSignature;
+        }
+
+        @Override
+        public FunctionImplementation get() {
+            return factory.apply(Lists2.map(boundSignature.getArgumentTypes(), TypeSignature::createType));
+        }
+
+        @Override
+        public String toString() {
+            return "ApplicableFunction{" +
+                   "declaredSignature=" + declaredSignature +
+                   ", boundSignature=" + boundSignature +
+                   ", factory=" + factory +
+                   '}';
         }
     }
 }

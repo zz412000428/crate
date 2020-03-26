@@ -26,23 +26,21 @@ import io.crate.data.Input;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.Symbol;
-import io.crate.metadata.BaseFunctionResolver;
 import io.crate.metadata.FunctionIdent;
-import io.crate.metadata.FunctionImplementation;
 import io.crate.metadata.FunctionInfo;
 import io.crate.metadata.Scalar;
 import io.crate.metadata.TransactionContext;
-import io.crate.metadata.functions.params.FuncParams;
-import io.crate.metadata.functions.params.Param;
+import io.crate.metadata.functions.Signature;
 import io.crate.types.DataType;
 import io.crate.types.DataTypes;
 import io.crate.types.ObjectType;
-import io.crate.types.StringType;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import static io.crate.types.TypeSignature.parseTypeSignature;
 
 /**
  * Scalar function to resolve elements inside a map.
@@ -50,24 +48,23 @@ import java.util.Map;
 public class SubscriptObjectFunction extends Scalar<Object, Map<String, Object>> {
 
     public static final String NAME = "subscript_obj";
-    private static final FuncParams FUNCTION_PARAMS = FuncParams
-        .builder(Param.of(ObjectType.untyped()), Param.of(StringType.INSTANCE))
-        .withVarArgs(Param.of(StringType.INSTANCE))
-        .build();
 
     private FunctionInfo info;
 
     public static void register(ScalarFunctionModule module) {
-        module.register(NAME, new BaseFunctionResolver(FUNCTION_PARAMS) {
-
-            @Override
-            public FunctionImplementation getForTypes(List<DataType> types) throws IllegalArgumentException {
-                return new SubscriptObjectFunction(new FunctionInfo(
-                    new FunctionIdent(NAME, types),
-                    DataTypes.UNDEFINED
-                ));
-            }
-        });
+        module.register(
+            Signature.scalar(
+                NAME,
+                parseTypeSignature("object"),
+                parseTypeSignature("text"),
+                parseTypeSignature("undefined") // return type can only be resolved dynamically atm
+            )
+            .withVariableArity(),
+            argumentTypes ->
+                new SubscriptObjectFunction(
+                    new FunctionInfo(new FunctionIdent(NAME, argumentTypes), DataTypes.UNDEFINED)
+                )
+        );
     }
 
     private SubscriptObjectFunction(FunctionInfo info) {
