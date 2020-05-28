@@ -32,6 +32,7 @@ import io.crate.metadata.functions.SignatureBinder;
 import io.crate.metadata.functions.params.FuncParams;
 import io.crate.types.DataType;
 import io.crate.types.DataTypes;
+import io.crate.types.NumericType;
 import io.crate.types.TypeSignature;
 import org.apache.logging.log4j.Logger;
 import io.crate.common.collections.Tuple;
@@ -590,8 +591,15 @@ public class Functions {
                                                 List<TypeSignature> declaredArgumentTypes) {
         int cnt = 0;
         for (int i = 0; i < actualArgumentTypes.size(); i++) {
-            if (actualArgumentTypes.get(i).equals(declaredArgumentTypes.get(i))) {
+            var actualArgumentType = actualArgumentTypes.get(i);
+            var declaredArgumentType = declaredArgumentTypes.get(i);
+            if (actualArgumentType.equals(declaredArgumentType)) {
                 cnt++;
+            } else if (actualArgumentType.getBaseTypeName().equalsIgnoreCase(NumericType.NAME)) {
+                var declaredType = declaredArgumentType.createType();
+                if (DataTypes.NUMERIC_PRIMITIVE_TYPES.contains(declaredType)) {
+                    cnt++;
+                }
             }
         }
         return cnt;

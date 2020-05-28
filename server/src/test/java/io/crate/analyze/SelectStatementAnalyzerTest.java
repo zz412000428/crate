@@ -48,6 +48,7 @@ import io.crate.expression.symbol.AliasSymbol;
 import io.crate.expression.symbol.Function;
 import io.crate.expression.symbol.Literal;
 import io.crate.expression.symbol.MatchPredicate;
+import io.crate.expression.symbol.NumericLiteral;
 import io.crate.expression.symbol.ParameterSymbol;
 import io.crate.expression.symbol.SelectSymbol;
 import io.crate.expression.symbol.Symbol;
@@ -457,7 +458,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void testWhereInSelectDifferentDataTypeValueIncompatibleDataTypes() throws Exception {
         expectedException.expect(ConversionException.class);
-        expectedException.expectMessage("Cannot cast `'foo'` of type `text` to type `bigint`");
+        expectedException.expectMessage("Cannot cast `'foo'` of type `text` to type `numeric`");
         analyze("select 'found' from users where 1 in (1, 'foo', 2)");
     }
 
@@ -801,8 +802,8 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
 
     @Test
     public void testArrayCompareInvalidArray() throws Exception {
-        expectedException.expect(ConversionException.class);
-        expectedException.expectMessage("Cannot cast `name` of type `text` to type `undefined_array`");
+        expectedException.expect(UnsupportedOperationException.class);
+        expectedException.expectMessage("unknown function: any_=(text, text)");
         analyze("select * from users where 'George' = ANY (name)");
     }
 
@@ -845,7 +846,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
         // so its fields are selected as arrays,
         // ergo simple comparison does not work here
         expectedException.expect(IllegalArgumentException.class);
-        expectedException.expectMessage("Cannot cast `friends['id']` of type `bigint_array` to type `bigint`");
+        expectedException.expectMessage("Cannot cast `friends['id']` of type `bigint_array` to type `numeric`");
         analyze("select * from users where 5 = friends['id']");
     }
 
@@ -934,11 +935,11 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     public void testPrefixedNumericLiterals() throws Exception {
         AnalyzedRelation relation = analyze("select - - - 10");
         List<Symbol> outputs = relation.outputs();
-        assertThat(outputs.get(0), is(Literal.of(-10L)));
+        assertThat(outputs.get(0), is(new NumericLiteral(-10L)));
 
         relation = analyze("select - + - 10");
         outputs = relation.outputs();
-        assertThat(outputs.get(0), is(Literal.of(10L)));
+        assertThat(outputs.get(0), is(new NumericLiteral(10L)));
 
         relation = analyze("select - (- 10 - + 10) * - (+ 10 + - 10)");
         outputs = relation.outputs();
@@ -982,8 +983,8 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
 
     @Test
     public void testAnyLikeInvalidArray() throws Exception {
-        expectedException.expect(ConversionException.class);
-        expectedException.expectMessage("Cannot cast `name` of type `text` to type `undefined_array`");
+        expectedException.expect(UnsupportedOperationException.class);
+        expectedException.expectMessage("unknown function: any_like(text, text)");
         analyze("select * from users where 'awesome' LIKE ANY (name)");
     }
 
@@ -1094,7 +1095,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void testMatchPredicateWithWrongQueryTerm() {
         expectedException.expect(IllegalArgumentException.class);
-        expectedException.expectMessage("Cannot cast expressions from type `bigint_array` to type `text`");
+        expectedException.expectMessage("Cannot cast expressions from type `numeric_array` to type `text`");
         analyze("select name from users order by match(name, [10, 20])");
     }
 
@@ -1273,9 +1274,9 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
 
     @Test
     public void testRegexpMatchInvalidArg() {
-        expectedException.expect(IllegalArgumentException.class);
-        expectedException.expectMessage("Cannot cast `floats` of type `real` to type `text`");
-        analyze("select * from users where floats ~ 'foo'");
+        expectedException.expect(UnsupportedOperationException.class);
+        expectedException.expectMessage("unknown function: op_~(object_array, text)");
+        analyze("select * from users where friends ~ 'foo'");
     }
 
     @Test
@@ -1711,7 +1712,7 @@ public class SelectStatementAnalyzerTest extends CrateDummyClusterServiceUnitTes
     @Test
     public void testSelectStarFromUnnestWithInvalidArguments() throws Exception {
         expectedException.expect(UnsupportedOperationException.class);
-        expectedException.expectMessage("unknown function: unnest(bigint, text)");
+        expectedException.expectMessage("unknown function: unnest(numeric, text)");
         analyze("select * from unnest(1, 'foo')");
     }
 

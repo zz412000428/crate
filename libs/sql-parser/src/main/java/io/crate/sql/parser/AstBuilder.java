@@ -76,11 +76,10 @@ import io.crate.sql.tree.DeallocateStatement;
 import io.crate.sql.tree.DecommissionNodeStatement;
 import io.crate.sql.tree.Delete;
 import io.crate.sql.tree.DenyPrivilege;
-import io.crate.sql.tree.DropCheckConstraint;
-import io.crate.sql.tree.RecordSubscript;
 import io.crate.sql.tree.DoubleLiteral;
 import io.crate.sql.tree.DropAnalyzer;
 import io.crate.sql.tree.DropBlobTable;
+import io.crate.sql.tree.DropCheckConstraint;
 import io.crate.sql.tree.DropFunction;
 import io.crate.sql.tree.DropRepository;
 import io.crate.sql.tree.DropSnapshot;
@@ -127,6 +126,7 @@ import io.crate.sql.tree.Node;
 import io.crate.sql.tree.NotExpression;
 import io.crate.sql.tree.NotNullColumnConstraint;
 import io.crate.sql.tree.NullLiteral;
+import io.crate.sql.tree.NumericLiteral;
 import io.crate.sql.tree.ObjectColumnType;
 import io.crate.sql.tree.ObjectLiteral;
 import io.crate.sql.tree.OptimizeStatement;
@@ -140,6 +140,7 @@ import io.crate.sql.tree.QualifiedNameReference;
 import io.crate.sql.tree.Query;
 import io.crate.sql.tree.QueryBody;
 import io.crate.sql.tree.QuerySpecification;
+import io.crate.sql.tree.RecordSubscript;
 import io.crate.sql.tree.RefreshStatement;
 import io.crate.sql.tree.Relation;
 import io.crate.sql.tree.RerouteAllocateReplicaShard;
@@ -199,6 +200,7 @@ import java.util.stream.Collectors;
 
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
+
 
 class AstBuilder extends SqlBaseBaseVisitor<Node> {
 
@@ -1691,12 +1693,51 @@ class AstBuilder extends SqlBaseBaseVisitor<Node> {
 
     @Override
     public Node visitIntegerLiteral(SqlBaseParser.IntegerLiteralContext context) {
-        return new LongLiteral(context.getText());
+        /*
+        long value = Long.parseLong(context.getText());
+        if (value < Short.MAX_VALUE + 1L) {
+            return new ShortLiteral((short) value);
+        } else if (value < Integer.MAX_VALUE + 1L) {
+            return new IntegerLiteral((int) value);
+        }
+        return new LongLiteral(value);
+         */
+
+        /*
+        Number num;
+        try {
+            num = NumberFormat.getInstance(Locale.ENGLISH).parse(context.getText());
+        } catch (ParseException e) {
+            throw new ParsingException(e.getMessage());
+        }
+         */
+
+        return new NumericLiteral(Long.parseLong(context.getText()), false);
     }
 
     @Override
     public Node visitDecimalLiteral(SqlBaseParser.DecimalLiteralContext context) {
-        return new DoubleLiteral(context.getText());
+        /*
+        var bd = new BigDecimal(context.getText());
+        var floatValue = bd.floatValue();
+        if (bd.precision() > 8
+            || floatValue == Float.NEGATIVE_INFINITY
+            || floatValue == Float.POSITIVE_INFINITY) {
+            return new DoubleLiteral(bd.doubleValue());
+        }
+        return new BigDecimalLiteral(bd);
+         */
+
+        /*
+        Number num;
+        try {
+            num = NumberFormat.getInstance(Locale.ENGLISH).parse(context.getText());
+        } catch (ParseException e) {
+            throw new ParsingException(e.getMessage());
+        }
+         */
+
+        return new NumericLiteral(Double.parseDouble(context.getText()), true);
     }
 
     @Override

@@ -31,6 +31,7 @@ import io.crate.metadata.FunctionIdent;
 import io.crate.metadata.FunctionImplementation;
 import io.crate.metadata.FunctionInfo;
 import io.crate.metadata.Scalar;
+import io.crate.metadata.functions.Signature;
 import io.crate.metadata.functions.params.FuncParams;
 import io.crate.metadata.functions.params.Param;
 import io.crate.types.ByteType;
@@ -43,6 +44,7 @@ import io.crate.types.LongType;
 import io.crate.types.ShortType;
 import io.crate.types.TimestampType;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -64,7 +66,112 @@ public class ArithmeticFunctions {
         public static final String MOD = "mod";
     }
 
+    private enum Operations {
+        ADD(
+            "+",
+            FunctionInfo.DETERMINISTIC_AND_COMPARISON_REPLACEMENT,
+            Math::addExact,
+            Double::sum,
+            Math::addExact,
+            Float::sum
+        ),
+        SUBSTRACT(
+            "-",
+            FunctionInfo.DETERMINISTIC_ONLY,
+            Math::subtractExact,
+            (arg0, arg1) -> arg0 - arg1,
+            Math::subtractExact,
+            (arg0, arg1) -> arg0 - arg1
+        ),
+        MULTIPLY(
+            "*",
+            FunctionInfo.DETERMINISTIC_ONLY,
+            Math::multiplyExact,
+            (arg0, arg1) -> arg0 * arg1,
+            Math::multiplyExact,
+            (arg0, arg1) -> arg0 * arg1
+        ),
+        DIVIDE(
+            "/",
+            FunctionInfo.DETERMINISTIC_ONLY,
+            (arg0, arg1) -> arg0 / arg1,
+            (arg0, arg1) -> arg0 / arg1,
+            (arg0, arg1) -> arg0 / arg1,
+            (arg0, arg1) -> arg0 / arg1
+        ),
+        MODULUS(
+            "%",
+            FunctionInfo.DETERMINISTIC_ONLY,
+            (arg0, arg1) -> arg0 % arg1,
+            (arg0, arg1) -> arg0 % arg1,
+            (arg0, arg1) -> arg0 % arg1,
+            (arg0, arg1) -> arg0 % arg1
+        ),
+        MOD(
+            "%",
+            FunctionInfo.DETERMINISTIC_ONLY,
+            (arg0, arg1) -> arg0 % arg1,
+            (arg0, arg1) -> arg0 % arg1,
+            (arg0, arg1) -> arg0 % arg1,
+            (arg0, arg1) -> arg0 % arg1
+        );
+
+        private final String operator;
+        private final Set<FunctionInfo.Feature> features;
+
+        private final BinaryOperator<Integer> integerFunction;
+        private final BinaryOperator<Double> doubleFunction;
+        private final BinaryOperator<Long> longFunction;
+        private final BinaryOperator<Float> floatFunction;
+
+        Operations(String operator,
+                   Set<FunctionInfo.Feature> features,
+                   BinaryOperator<Integer> integerFunction,
+                   BinaryOperator<Double> doubleFunction,
+                   BinaryOperator<Long> longFunction,
+                   BinaryOperator<Float> floatFunction) {
+            this.operator = operator;
+            this.features = features;
+            this.doubleFunction = doubleFunction;
+            this.integerFunction = integerFunction;
+            this.longFunction = longFunction;
+            this.floatFunction = floatFunction;
+        }
+
+        public String getOperator() {
+            return operator;
+        }
+
+        public Set<FunctionInfo.Feature> getFeatures() {
+            return features;
+        }
+
+        public BinaryOperator<Double> getDoubleFunction() {
+            return doubleFunction;
+        }
+
+        public BinaryOperator<Integer> getIntegerFunction() {
+            return integerFunction;
+        }
+
+        public BinaryOperator<Long> getLongFunction() {
+            return longFunction;
+        }
+
+        public BinaryOperator<Float> getFloatFunction() {
+            return floatFunction;
+        }
+
+
+        @Override
+        public String toString() {
+            return name().toLowerCase(Locale.ENGLISH);
+        }
+    }
+
+
     public static void register(ScalarFunctionModule module) {
+        /*
         module.register(Names.ADD, new ArithmeticFunctionResolver(
             Names.ADD,
             "+",
@@ -115,10 +222,55 @@ public class ArithmeticFunctions {
 
         module.register(Names.MODULUS, modFunctionResolverFactory.apply(Names.MODULUS));
         module.register(Names.MOD, modFunctionResolverFactory.apply(Names.MOD));
+         */
+
         module.register(Names.POWER, new DoubleFunctionResolver(
             Names.POWER,
             Math::pow
         ));
+
+        for (var op : Operations.values()) {
+            module.register(
+                Signature.scalar(
+                    op.toString(),
+                    DataTypes.INTEGER.getTypeSignature(),
+                    DataTypes.INTEGER.getTypeSignature(),
+                    DataTypes.INTEGER.getTypeSignature()
+                ),
+                (signature, args) ->
+                    new BinaryScalar<>(op.integerFunction, op.toString(), signature, DataTypes.INTEGER, op.features)
+            );
+            module.register(
+                Signature.scalar(
+                    op.toString(),
+                    DataTypes.LONG.getTypeSignature(),
+                    DataTypes.LONG.getTypeSignature(),
+                    DataTypes.LONG.getTypeSignature()
+                ),
+                (signature, args) ->
+                    new BinaryScalar<>(op.longFunction, op.toString(), signature, DataTypes.LONG, op.features)
+            );
+            module.register(
+                Signature.scalar(
+                    op.toString(),
+                    DataTypes.FLOAT.getTypeSignature(),
+                    DataTypes.FLOAT.getTypeSignature(),
+                    DataTypes.FLOAT.getTypeSignature()
+                ),
+                (signature, args) ->
+                    new BinaryScalar<>(op.floatFunction, op.toString(), signature, DataTypes.FLOAT, op.features)
+            );
+            module.register(
+                Signature.scalar(
+                    op.toString(),
+                    DataTypes.DOUBLE.getTypeSignature(),
+                    DataTypes.DOUBLE.getTypeSignature(),
+                    DataTypes.DOUBLE.getTypeSignature()
+                ),
+                (signature, args) ->
+                    new BinaryScalar<>(op.doubleFunction, op.toString(), signature, DataTypes.DOUBLE, op.features)
+            );
+        }
     }
 
     static final class DoubleFunctionResolver extends BaseFunctionResolver {

@@ -111,6 +111,7 @@ import io.crate.sql.tree.NegativeExpression;
 import io.crate.sql.tree.Node;
 import io.crate.sql.tree.NotExpression;
 import io.crate.sql.tree.NullLiteral;
+import io.crate.sql.tree.NumericLiteral;
 import io.crate.sql.tree.ObjectLiteral;
 import io.crate.sql.tree.ParameterExpression;
 import io.crate.sql.tree.QualifiedName;
@@ -897,6 +898,12 @@ public class ExpressionAnalyzer {
         @Override
         protected Symbol visitLongLiteral(LongLiteral node, ExpressionAnalysisContext context) {
             return Literal.of(node.getValue());
+        }
+
+        @Override
+        protected Symbol visitNumericLiteral(NumericLiteral node,
+                                             ExpressionAnalysisContext context) {
+            return new io.crate.expression.symbol.NumericLiteral(node.getValue(), node.isFloatingPoint());
         }
 
         @Override

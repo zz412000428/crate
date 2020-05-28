@@ -1765,4 +1765,19 @@ public class TransportSQLActionTest extends SQLTransportIntegrationTest {
                "doc| metrics| x| 23| false| -1| 4| 2| NULL| NULL| 0| b\n")
         );
     }
+
+    @Test
+    public void testGHIssue() {
+        execute("create table test (x double)");
+        execute("insert into test (x) values (1.11111), (2.787488)");
+        refresh();
+        execute("select \n" +
+                "    avg(x) as a,\n" +
+                "    avg(x) * 10 as b,\n" +
+                "    round(avg(x) * 10) as c,\n" +
+                "    round(avg(x) * 10) / 10.0 as d,\n" +
+                "    round(1.9492990000000001 * 10) / 10.0 as e\n" +
+                "from test");
+        assertThat(printedTable(response.rows()), is("1.9492990000000001| 19.492990000000002| 19| 1.9| 1.9\n"));
+    }
 }

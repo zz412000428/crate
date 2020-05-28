@@ -22,6 +22,7 @@
 package io.crate.analyze;
 
 import io.crate.expression.symbol.Literal;
+import io.crate.expression.symbol.NumericLiteral;
 import io.crate.expression.symbol.Symbol;
 import io.crate.expression.symbol.SymbolVisitor;
 import io.crate.expression.symbol.Symbols;
@@ -30,6 +31,7 @@ import io.crate.types.DoubleType;
 import io.crate.types.FloatType;
 import io.crate.types.IntegerType;
 import io.crate.types.LongType;
+import io.crate.types.NumericType;
 import io.crate.types.ShortType;
 
 public final class NegateLiterals extends SymbolVisitor<Void, Symbol> {
@@ -61,6 +63,8 @@ public final class NegateLiterals extends SymbolVisitor<Void, Symbol> {
                 return Literal.of(valueType, (Integer) value * -1);
             case LongType.ID:
                 return Literal.of(valueType, (Long) value * -1);
+            case NumericType.ID:
+                return ((NumericLiteral) symbol).negate();
             default:
                 throw new UnsupportedOperationException(Symbols.format(
                     "Cannot negate %s. You may need to add explicit type casts", symbol));

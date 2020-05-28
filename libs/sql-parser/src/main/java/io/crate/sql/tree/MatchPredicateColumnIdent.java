@@ -34,6 +34,7 @@ public class MatchPredicateColumnIdent extends Expression {
         if (boost != null) {
             if (!(boost instanceof LongLiteral ||
                   boost instanceof DoubleLiteral ||
+                  boost instanceof NumericLiteral ||
                   boost instanceof ParameterExpression)) {
                 throw new IllegalArgumentException("'boost' value must be a numeric literal or a parameter expression");
             }

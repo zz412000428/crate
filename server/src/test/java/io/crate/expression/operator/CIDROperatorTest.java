@@ -77,6 +77,7 @@ public class CIDROperatorTest extends AbstractScalarFunctionsTest {
     @Test
     public void test_both_operands_are_of_wrong_type() {
         expectedException.expect(ConversionException.class);
+        expectedException.expectMessage("Cannot cast `_map('cidr', '192.168.0.0/24')` of type `object` to type `text`");
         assertEvaluate("1.2 << { cidr = '192.168.0.0/24'}", false);
     }
 

@@ -68,6 +68,7 @@ public final class DataTypes {
     public static final ShortType SHORT = ShortType.INSTANCE;
     public static final IntegerType INTEGER = IntegerType.INSTANCE;
     public static final LongType LONG = LongType.INSTANCE;
+    public static final NumericType NUMERIC = NumericType.INSTANCE;
 
     public static final TimestampType TIMESTAMPZ = TimestampType.INSTANCE_WITH_TZ;
     public static final TimestampType TIMESTAMP = TimestampType.INSTANCE_WITHOUT_TZ;
@@ -149,13 +150,14 @@ public final class DataTypes {
         );
 
     private static final Set<Integer> NUMBER_CONVERSIONS = Stream.concat(
-        Stream.of(BOOLEAN, STRING, TIMESTAMPZ, TIMESTAMP, IP),
+        Stream.of(BOOLEAN, STRING, TIMESTAMPZ, TIMESTAMP, IP, NUMERIC),
         NUMERIC_PRIMITIVE_TYPES.stream()
     ).map(DataType::id).collect(toSet());
 
     // allowed conversion from key to one of the value types
     // the key type itself does not need to be in the value set
     static final Map<Integer, Set<Integer>> ALLOWED_CONVERSIONS = Map.ofEntries(
+        entry(NUMERIC.id(), NUMBER_CONVERSIONS),
         entry(BYTE.id(), NUMBER_CONVERSIONS),
         entry(SHORT.id(), NUMBER_CONVERSIONS),
         entry(INTEGER.id(), NUMBER_CONVERSIONS),
@@ -315,6 +317,7 @@ public final class DataTypes {
         entry(SHORT.getName(), SHORT),
         entry(INTEGER.getName(), INTEGER),
         entry(LONG.getName(), LONG),
+        entry(NUMERIC.getName(), NUMERIC),
         entry(RowType.EMPTY.getName(), RowType.EMPTY),
         entry(TIMESTAMPZ.getName(), TIMESTAMPZ),
         entry(TIMESTAMP.getName(), TIMESTAMP),
