@@ -362,7 +362,7 @@ public class Session implements AutoCloseable {
     }
 
     @Nullable
-    public CompletableFuture<?> execute(String portalName, int maxRows, ResultReceiver<?> resultReceiver) {
+    public void execute(String portalName, int maxRows, ResultReceiver<?> resultReceiver) {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("method=execute portalName={} maxRows={}", portalName, maxRows);
         }
@@ -397,6 +397,7 @@ public class Session implements AutoCloseable {
             }
             resultReceiver.allFinished(false);
         } else if (analyzedStmt.isWriteOperation()) {
+            LOGGER.trace("defer write: {}", analyzedStmt);
             /* We defer the execution for any other statements to `sync` messages so that we can efficiently process
              * bulk operations. E.g. If we receive `INSERT INTO (x) VALUES (?)` bindings/execute multiple times
              * We want to create bulk requests internally:                                                          /
@@ -424,6 +425,7 @@ public class Session implements AutoCloseable {
                 }
             );
         } else {
+            LOGGER.trace("execute non-write: {}", analyzedStmt);
             if (!deferredExecutionsByStmt.isEmpty()) {
                 throw new UnsupportedOperationException(
                     "Only write operations are allowed in Batch statements");
@@ -434,9 +436,7 @@ public class Session implements AutoCloseable {
                 activeExecution = activeExecution
                     .thenCompose(ignored -> singleExec(portal, resultReceiver, maxRows));
             }
-            return activeExecution;
         }
-        return null;
     }
 
     public CompletableFuture<?> sync() {
@@ -445,7 +445,7 @@ public class Session implements AutoCloseable {
         } else {
             var result = activeExecution;
             activeExecution = null;
-            return result;
+            return result.thenCompose(ignored -> triggerDeferredExecutions());
         }
     }
 

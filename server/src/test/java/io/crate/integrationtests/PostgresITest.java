@@ -30,6 +30,8 @@ import io.crate.types.DataTypes;
 
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.test.ESIntegTestCase;
+import org.elasticsearch.test.junit.annotations.TestLogging;
+import org.elasticsearch.threadpool.ThreadPool;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -59,6 +61,8 @@ import java.util.Properties;
 import java.util.StringJoiner;
 import java.util.UUID;
 
+import com.carrotsearch.randomizedtesting.annotations.Seed;
+
 import static io.crate.protocols.postgres.PostgresNetty.PSQL_PORT_SETTING;
 import static org.hamcrest.Matchers.arrayContaining;
 import static org.hamcrest.Matchers.emptyIterable;
@@ -68,6 +72,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.core.Is.is;
 
 @ESIntegTestCase.ClusterScope(numDataNodes = 2, numClientNodes = 0, supportsDedicatedMasters = false)
+@Seed("ED360DF1921A08DD:6453E70EE934F165")
 public class PostgresITest extends SQLTransportIntegrationTest {
 
     private static final String NO_IPV6 = "CRATE_TESTS_NO_IPV6";
@@ -252,10 +257,14 @@ public class PostgresITest extends SQLTransportIntegrationTest {
     @Test
     public void testWriteOperationsWithoutAutocommitAndCommitAndRollback() throws Exception {
         try (Connection conn = DriverManager.getConnection(url(RW), properties)) {
+            conn.setNetworkTimeout(internalCluster().getInstance(ThreadPool.class).generic(), 1000);
             conn.setAutoCommit(false);
             try (Statement statement = conn.createStatement()) {
+                statement.setQueryTimeout(1);
+                System.out.println("create table");
                 statement.executeUpdate("create table t (x int) with (number_of_replicas = 0)");
             }
+            System.out.println("insert");
             try (PreparedStatement stmt = conn.prepareStatement("insert into t (x) values (1), (2)")) {
                 stmt.executeUpdate();
             }

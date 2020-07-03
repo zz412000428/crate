@@ -24,7 +24,10 @@ package io.crate.protocols.postgres;
 
 import java.net.SocketAddress;
 import java.util.ArrayDeque;
-import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
@@ -44,8 +47,10 @@ import io.netty.util.AttributeKey;
  **/
 public class DelayableWriteChannel implements Channel {
 
+    private static final Logger LOGGER = LogManager.getLogger(DelayableWriteChannel.class);
+
     private final Channel delegate;
-    private volatile DelayedWrites delay;
+    private DelayedWrites delay;
 
     public DelayableWriteChannel(Channel channel) {
         this.delegate = channel;
@@ -288,29 +293,31 @@ public class DelayableWriteChannel implements Channel {
         return delegate;
     }
 
-    public void delayWritesUntil(CompletableFuture<?> future) {
-        DelayedWrites delayedWrites;
-        if (delay == null) {
-            delayedWrites = new DelayedWrites(future);
-        } else {
-            delayedWrites = new DelayedWrites(delay.future.thenCompose(ignored -> future));
-        }
-        this.delay = delayedWrites;
-        future.whenComplete((res, err) -> {
-            delayedWrites.runDelayed();
-            if (delay == delayedWrites) {
-                delay = null;
+    private void unlockDelay(DelayedWrites delayedWrites) {
+        LOGGER.trace("unlock write {}", this);
+        synchronized (delegate) {
+            if (delayedWrites == this.delay) {
+                this.delay = null;
             }
-        });
+        }
     }
 
-    static class DelayedWrites {
+    public DelayedWrites delayWrites() {
+        LOGGER.trace("delaying writes {}", this);
+        DelayedWrites delayedWrites = new DelayedWrites(this::unlockDelay);
+        synchronized (delegate) {
+            this.delay = delayedWrites;
+        }
+        return delayedWrites;
+    }
+
+    public static class DelayedWrites {
 
         private final ArrayDeque<Runnable> delayed = new ArrayDeque<>();
-        private final CompletableFuture<?> future;
+        private final Consumer<DelayedWrites> tryUnlockDelay;
 
-        public DelayedWrites(CompletableFuture<?> future) {
-            this.future = future;
+        public DelayedWrites(Consumer<DelayedWrites> tryUnlockDelay) {
+            this.tryUnlockDelay = tryUnlockDelay;
         }
 
         public void add(Runnable runnable) {
@@ -319,13 +326,14 @@ public class DelayableWriteChannel implements Channel {
             }
         }
 
-        private void runDelayed() {
+        public void runDelayed() {
             Runnable runnable;
             synchronized (delayed) {
                 while ((runnable = delayed.poll()) != null) {
                     runnable.run();
                 }
             }
+            tryUnlockDelay.accept(this);
         }
     }
 }

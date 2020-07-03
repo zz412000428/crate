@@ -43,6 +43,7 @@ public class ResultSetReceiverTest {
         ResultSetReceiver resultSetReceiver = new ResultSetReceiver(
             "select * from t",
             channel,
+            () -> {},
             TransactionState.IDLE,
             RuntimeException::new,
             Collections.singletonList(PGTypes.get(DataTypes.INTEGER)),

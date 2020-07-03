@@ -34,11 +34,13 @@ class RowCountReceiver extends BaseResultReceiver {
     private final Channel channel;
     private final Function<Throwable, Exception> wrapError;
     private final String query;
+    private final Runnable unlockChannel;
     private long rowCount;
 
-    RowCountReceiver(String query, Channel channel, Function<Throwable, Exception> wrapError) {
+    RowCountReceiver(String query, Channel channel, Runnable unlockChannel, Function<Throwable, Exception> wrapError) {
         this.query = query;
         this.channel = channel;
+        this.unlockChannel = unlockChannel;
         this.wrapError = wrapError;
     }
 
@@ -56,12 +58,19 @@ class RowCountReceiver extends BaseResultReceiver {
 
     @Override
     public void allFinished(boolean interrupted) {
-        Messages.sendCommandComplete(channel, query, rowCount).addListener(f -> super.allFinished(interrupted));
+        Messages.sendCommandComplete(channel, query, rowCount)
+            .addListener(f -> {
+                unlockChannel.run();
+                super.allFinished(interrupted);
+            });
     }
 
     @Override
     public void fail(@Nonnull Throwable throwable) {
         var t = wrapError.apply(throwable);
-        Messages.sendErrorResponse(channel, t).addListener(f -> super.fail(t));
+        Messages.sendErrorResponse(channel, t).addListener(f -> {
+            unlockChannel.run();
+            super.fail(t);
+        });
     }
 }

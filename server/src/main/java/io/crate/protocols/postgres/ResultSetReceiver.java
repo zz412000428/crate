@@ -43,17 +43,20 @@ class ResultSetReceiver extends BaseResultReceiver {
 
     @Nullable
     private final FormatCodes.FormatCode[] formatCodes;
+    private final Runnable unlockChannel;
 
     private long rowCount = 0;
 
     ResultSetReceiver(String query,
                       Channel channel,
+                      Runnable unlockChannel,
                       TransactionState transactionState,
                       Function<Throwable, Exception> wrapError,
                       List<PGType<?>> columnTypes,
                       @Nullable FormatCodes.FormatCode[] formatCodes) {
         this.query = query;
         this.channel = channel;
+        this.unlockChannel = unlockChannel;
         this.transactionState = transactionState;
         this.wrapError = wrapError;
         this.columnTypes = columnTypes;
@@ -72,7 +75,8 @@ class ResultSetReceiver extends BaseResultReceiver {
     @Override
     public void batchFinished() {
         Messages.sendPortalSuspended(channel);
-        Messages.sendReadyForQuery(channel, transactionState);
+        Messages.sendReadyForQuery(channel, transactionState)
+            .addListener(f -> unlockChannel.run());
     }
 
     @Override
@@ -80,13 +84,20 @@ class ResultSetReceiver extends BaseResultReceiver {
         if (interrupted) {
             super.allFinished(true);
         } else {
-            Messages.sendCommandComplete(channel, query, rowCount).addListener(f -> super.allFinished(false));
+            Messages.sendCommandComplete(channel, query, rowCount)
+                .addListener(f -> {
+                    unlockChannel.run();
+                    super.allFinished(false);
+                });
         }
     }
 
     @Override
     public void fail(@Nonnull Throwable throwable) {
         final Exception e = wrapError.apply(throwable);
-        Messages.sendErrorResponse(channel, e).addListener(f -> super.fail(e));
+        Messages.sendErrorResponse(channel, e).addListener(f -> {
+            unlockChannel.run();
+            super.fail(e);
+        });
     }
 }

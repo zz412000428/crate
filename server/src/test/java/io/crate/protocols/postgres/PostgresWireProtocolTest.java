@@ -83,10 +83,11 @@ public class PostgresWireProtocolTest extends CrateDummyClusterServiceUnitTest {
     private SQLOperations sqlOperations;
     private List<Session> sessions = new ArrayList<>();
     private EmbeddedChannel channel;
+    private SQLExecutor e;
 
     @Before
     public void prepare() {
-        SQLExecutor e = SQLExecutor.builder(clusterService).build();
+        e = SQLExecutor.builder(clusterService).build();
         sqlOperations = new SQLOperations(
             e.analyzer,
             e.planner,
@@ -486,16 +487,6 @@ public class PostgresWireProtocolTest extends CrateDummyClusterServiceUnitTest {
     }
 
     private void submitQueriesThroughSimpleQueryMode(String statements, @Nullable Throwable failure) {
-        SQLOperations sqlOperations = Mockito.mock(SQLOperations.class);
-        Session session = mock(Session.class);
-        SessionContext sessionContext = new SessionContext(Set.of(), User.CRATE_USER);
-        when(session.sessionContext()).thenReturn(sessionContext);
-        when(sqlOperations.createSession(any(String.class), any(User.class))).thenReturn(session);
-        DescribeResult describeResult = mock(DescribeResult.class);
-        when(describeResult.getFields()).thenReturn(null);
-        when(session.describe(anyChar(), anyString())).thenReturn(describeResult);
-        when(session.transactionState()).thenReturn(TransactionState.IDLE);
-
         PostgresWireProtocol ctx =
             new PostgresWireProtocol(
                 sqlOperations,
@@ -503,15 +494,6 @@ public class PostgresWireProtocolTest extends CrateDummyClusterServiceUnitTest {
                 new AlwaysOKNullAuthentication(),
                 null);
         channel = new EmbeddedChannel(ctx.decoder, ctx.handler);
-
-        if (failure != null) {
-            when(session.sync()).thenAnswer(invocationOnMock -> {
-                Messages.sendErrorResponse(channel, failure);
-                return CompletableFuture.failedFuture(failure);
-            });
-        } else {
-            when(session.sync()).thenReturn(CompletableFuture.completedFuture(null));
-        }
 
         sendStartupMessage(channel);
         readAuthenticationOK(channel);

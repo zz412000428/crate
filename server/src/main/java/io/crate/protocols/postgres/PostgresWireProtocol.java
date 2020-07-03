@@ -36,6 +36,7 @@ import io.crate.common.annotations.VisibleForTesting;
 import io.crate.common.collections.Lists2;
 import io.crate.exceptions.SQLExceptions;
 import io.crate.expression.symbol.Symbol;
+import io.crate.protocols.postgres.DelayableWriteChannel.DelayedWrites;
 import io.crate.protocols.postgres.types.PGType;
 import io.crate.protocols.postgres.types.PGTypes;
 import io.crate.protocols.ssl.SslContextProvider;
@@ -627,29 +628,12 @@ public class PostgresWireProtocol {
             return;
         }
         List<? extends DataType> outputTypes = session.getOutputTypes(portalName);
-        ResultReceiver resultReceiver;
-        if (outputTypes == null) {
-            // this is a DML query
-            maxRows = 0;
-            resultReceiver = new RowCountReceiver(
-                query,
-                channel.bypassDelay(),
-                SQLExceptions.forWireTransmission(getAccessControl.apply(session.sessionContext()))
-            );
-        } else {
-            // query with resultSet
-            resultReceiver = new ResultSetReceiver(
-                query,
-                channel.bypassDelay(),
-                session.transactionState(),
-                SQLExceptions.forWireTransmission(getAccessControl.apply(session.sessionContext())),
-                Lists2.map(outputTypes, PGTypes::get),
-                session.getResultFormatCodes(portalName)
-            );
-        }
-        // .execute is going async and may execute the query in another thread-pool.
-        // The results are later sent to the clients via the `ResultReceiver` created
-        // above, The `channel.write` calls - which the `ResultReceiver` makes - may
+        ResultReceiver<?> resultReceiver;
+
+        // session.execute is going async and may execute the query in another thread-pool.
+        // The results are later sent to the clients via the `ResultReceiver`.
+        //
+        // The `channel.write` calls - which the `ResultReceiver` makes - may
         // happen in a thread which is *not* a netty thread.
         // If that is the case, netty schedules the writes intead of running them
         // immediately. A consequence of that is that *this* thread can continue
@@ -662,10 +646,34 @@ public class PostgresWireProtocol {
         // been transmitted.
         //
         // To ensure clients receive messages in the correct order we delay all writes
-        // on the channel until the future below is finished.
-        CompletableFuture<?> execute = session.execute(portalName, maxRows, resultReceiver);
-        if (execute != null) {
-            channel.delayWritesUntil(execute);
+        // on the channel until the resultReceiver is finished.
+        DelayedWrites delayWrites = channel.delayWrites();
+        if (outputTypes == null) {
+            // this is a DML query
+            maxRows = 0;
+            resultReceiver = new RowCountReceiver(
+                query,
+                channel.bypassDelay(),
+                delayWrites::runDelayed,
+                SQLExceptions.forWireTransmission(getAccessControl.apply(session.sessionContext()))
+            );
+        } else {
+            // query with resultSet
+            resultReceiver = new ResultSetReceiver(
+                query,
+                channel.bypassDelay(),
+                delayWrites::runDelayed,
+                session.transactionState(),
+                SQLExceptions.forWireTransmission(getAccessControl.apply(session.sessionContext())),
+                Lists2.map(outputTypes, PGTypes::get),
+                session.getResultFormatCodes(portalName)
+            );
+        }
+        try {
+            session.execute(portalName, maxRows, resultReceiver);
+        } catch (Throwable t) {
+            delayWrites.runDelayed();
+            throw t;
         }
     }
 
@@ -728,6 +736,7 @@ public class PostgresWireProtocol {
             return result;
         }
 
+        DelayedWrites delayWrites = null;
         try {
             session.parse("", query, Collections.emptyList());
             session.bind("", "", Collections.emptyList(), null);
@@ -736,29 +745,34 @@ public class PostgresWireProtocol {
 
             Function<Throwable, Exception> wrapError = SQLExceptions.forWireTransmission(
                 getAccessControl.apply(session.sessionContext()));
-            CompletableFuture<?> execute;
             if (fields == null) {
-                RowCountReceiver rowCountReceiver = new RowCountReceiver(query, channel.bypassDelay(), wrapError);
-                execute = session.execute("", 0, rowCountReceiver);
+                delayWrites = channel.delayWrites();
+                RowCountReceiver rowCountReceiver = new RowCountReceiver(
+                    query,
+                    channel.bypassDelay(),
+                    delayWrites::runDelayed,
+                    wrapError
+                );
+                session.execute("", 0, rowCountReceiver);
             } else {
                 Messages.sendRowDescription(channel, fields, null);
+                delayWrites = channel.delayWrites();
                 ResultSetReceiver resultSetReceiver = new ResultSetReceiver(
                     query,
                     channel.bypassDelay(),
+                    delayWrites::runDelayed,
                     TransactionState.IDLE,
                     wrapError,
                     Lists2.map(fields, x -> PGTypes.get(x.valueType())),
                     null
                 );
-                execute = session.execute("", 0, resultSetReceiver);
+                session.execute("", 0, resultSetReceiver);
             }
-            if (execute == null) {
-                return session.sync();
-            } else {
-                channel.delayWritesUntil(execute);
-                return execute.thenCompose(ignored -> session.sync());
-            }
+            return session.sync();
         } catch (Throwable t) {
+            if (delayWrites != null) {
+                delayWrites.runDelayed();
+            }
             Messages.sendErrorResponse(channel, t);
             result.completeExceptionally(t);
             return result;
