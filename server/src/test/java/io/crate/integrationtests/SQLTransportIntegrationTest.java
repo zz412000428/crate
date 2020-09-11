@@ -432,7 +432,7 @@ public abstract class SQLTransportIntegrationTest extends ESIntegTestCase {
 
     public static class PlanForNode {
         public final Plan plan;
-        final String nodeName;
+        public final String nodeName;
         public final PlannerContext plannerContext;
 
         private PlanForNode(Plan plan, String nodeName, PlannerContext plannerContext) {
@@ -445,7 +445,10 @@ public abstract class SQLTransportIntegrationTest extends ESIntegTestCase {
     public PlanForNode plan(String stmt) {
         String[] nodeNames = internalCluster().getNodeNames();
         String nodeName = nodeNames[randomIntBetween(1, nodeNames.length) - 1];
+        return plan(stmt, nodeName);
+    }
 
+    public PlanForNode plan(String stmt, String nodeName) {
         Analyzer analyzer = internalCluster().getInstance(Analyzer.class, nodeName);
         Planner planner = internalCluster().getInstance(Planner.class, nodeName);
         NodeContext nodeCtx = internalCluster().getInstance(NodeContext.class, nodeName);

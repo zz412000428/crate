@@ -139,11 +139,13 @@ public class Order extends ForwardingLogicalPlan {
         InputColumns.SourceSymbols ctx = new InputColumns.SourceSymbols(source.outputs());
         List<Symbol> orderByInputColumns = InputColumns.create(this.orderBy.orderBySymbols(), ctx);
         ensureOrderByColumnsArePresentInOutputs(orderByInputColumns);
+
+        var binder = new SubQueryAndParamBinder(params, subQueryResults);
         OrderedTopNProjection topNProjection = new OrderedTopNProjection(
             Limit.limitAndOffset(limit, offset),
             0,
-            InputColumns.create(outputs, ctx),
-            orderByInputColumns,
+            Lists2.map(InputColumns.create(outputs, ctx), binder),
+            Lists2.map(orderByInputColumns, binder),
             this.orderBy.reverseFlags(),
             this.orderBy.nullsFirst()
         );
