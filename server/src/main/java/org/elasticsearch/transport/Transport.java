@@ -43,8 +43,6 @@ import java.util.function.Predicate;
 
 public interface Transport extends LifecycleComponent {
 
-    Setting<Boolean> TRANSPORT_TCP_COMPRESS = Setting.boolSetting("transport.tcp.compress", false, Property.NodeScope);
-
     /**
      * Registers a new request handler
      */

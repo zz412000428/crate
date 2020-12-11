@@ -19,6 +19,8 @@
 
 package org.elasticsearch.transport;
 
+import io.crate.common.io.IOUtils;
+import io.crate.common.unit.TimeValue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
@@ -27,7 +29,6 @@ import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionListenerResponseHandler;
 import org.elasticsearch.cluster.ClusterName;
 import org.elasticsearch.cluster.node.DiscoveryNode;
-import javax.annotation.Nullable;
 import org.elasticsearch.common.Strings;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.io.stream.StreamInput;
@@ -41,10 +42,8 @@ import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.BoundTransportAddress;
 import org.elasticsearch.common.transport.TransportAddress;
-import io.crate.common.unit.TimeValue;
 import org.elasticsearch.common.util.concurrent.AbstractRunnable;
 import org.elasticsearch.common.util.concurrent.EsRejectedExecutionException;
-import io.crate.common.io.IOUtils;
 import org.elasticsearch.node.NodeClosedException;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.tasks.TaskCancelledException;
@@ -52,6 +51,7 @@ import org.elasticsearch.tasks.TaskManager;
 import org.elasticsearch.threadpool.Scheduler;
 import org.elasticsearch.threadpool.ThreadPool;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.UnknownHostException;
@@ -861,11 +861,11 @@ public class TransportService extends AbstractLifecycleComponent implements Tran
     }
 
     /** called by the {@link Transport} implementation once a response was sent to calling node */
-    public void onResponseSent(long requestId, String action, TransportResponse response, TransportResponseOptions options) {
+    public void onResponseSent(long requestId, String action, TransportResponse response) {
         if (tracerLog.isTraceEnabled() && shouldTraceAction(action)) {
             tracerLog.trace("[{}][{}] sent response", requestId, action);
         }
-        messageListener.onResponseSent(requestId, action, response, options);
+        messageListener.onResponseSent(requestId, action, response);
     }
 
     /** called by the {@link Transport} implementation after an exception was sent as a response to an incoming request */
@@ -1090,12 +1090,7 @@ public class TransportService extends AbstractLifecycleComponent implements Tran
 
         @Override
         public void sendResponse(TransportResponse response) throws IOException {
-            sendResponse(response, TransportResponseOptions.EMPTY);
-        }
-
-        @Override
-        public void sendResponse(final TransportResponse response, TransportResponseOptions options) throws IOException {
-            service.onResponseSent(requestId, action, response, options);
+            service.onResponseSent(requestId, action, response);
             final TransportResponseHandler handler = service.responseHandlers.onResponseReceived(requestId, service);
             // ignore if its null, the service logs it
             if (handler != null) {
@@ -1207,10 +1202,9 @@ public class TransportService extends AbstractLifecycleComponent implements Tran
         @Override
         public void onResponseSent(long requestId,
                                    String action,
-                                   TransportResponse response,
-                                   TransportResponseOptions finalOptions) {
+                                   TransportResponse response) {
             for (TransportMessageListener listener : listeners) {
-                listener.onResponseSent(requestId, action, response, finalOptions);
+                listener.onResponseSent(requestId, action, response);
             }
         }
 

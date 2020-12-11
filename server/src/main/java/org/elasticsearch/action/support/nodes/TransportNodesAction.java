@@ -83,10 +83,6 @@ public abstract class TransportNodesAction<NodesRequest extends BaseNodesRequest
         new AsyncAction(task, request, listener).start();
     }
 
-    protected boolean transportCompress() {
-        return false;
-    }
-
     /**
      * Map the responses into {@code nodeResponseClass} responses and {@link FailedNodeException}s.
      *
@@ -156,7 +152,6 @@ public abstract class TransportNodesAction<NodesRequest extends BaseNodesRequest
             if (request.timeout() != null) {
                 builder.withTimeout(request.timeout());
             }
-            builder.withCompress(transportCompress());
             for (int i = 0; i < nodes.length; i++) {
                 final int idx = i;
                 final DiscoveryNode node = nodes[i];

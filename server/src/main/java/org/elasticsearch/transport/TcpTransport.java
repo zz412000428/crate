@@ -19,43 +19,10 @@
 
 package org.elasticsearch.transport;
 
-import static java.util.Collections.unmodifiableMap;
-import static org.elasticsearch.common.transport.NetworkExceptionHelper.isCloseConnectionException;
-import static org.elasticsearch.common.transport.NetworkExceptionHelper.isConnectException;
-import static org.elasticsearch.common.util.concurrent.ConcurrentCollections.newConcurrentMap;
-
-import java.io.IOException;
-import java.io.StreamCorruptedException;
-import java.net.BindException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
-import java.nio.channels.CancelledKeyException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
 import com.carrotsearch.hppc.IntHashSet;
 import com.carrotsearch.hppc.IntSet;
-
+import io.crate.common.annotations.VisibleForTesting;
+import io.crate.common.unit.TimeValue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
@@ -91,8 +58,39 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.threadpool.ThreadPool;
 
-import io.crate.common.annotations.VisibleForTesting;
-import io.crate.common.unit.TimeValue;
+import java.io.IOException;
+import java.io.StreamCorruptedException;
+import java.net.BindException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
+import java.nio.channels.CancelledKeyException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import static java.util.Collections.unmodifiableMap;
+import static org.elasticsearch.common.transport.NetworkExceptionHelper.isCloseConnectionException;
+import static org.elasticsearch.common.transport.NetworkExceptionHelper.isConnectException;
+import static org.elasticsearch.common.util.concurrent.ConcurrentCollections.newConcurrentMap;
 
 public abstract class TcpTransport extends AbstractLifecycleComponent implements Transport {
 
@@ -122,7 +120,6 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
     // this lock is here to make sure we close this transport and disconnect all the client nodes
     // connections while no connect operations is going on
     private final ReadWriteLock closeLock = new ReentrantReadWriteLock();
-    protected final boolean compress;
     protected final Settings settings;
     private volatile BoundTransportAddress boundAddress;
 
@@ -141,7 +138,6 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         this.settings = settings;
         this.profileSettings = getProfileSettings(settings);
         this.threadPool = threadPool;
-        this.compress = Transport.TRANSPORT_TCP_COMPRESS.get(settings);
         this.networkService = networkService;
 
         String nodeName = Node.NODE_NAME_SETTING.get(settings);
@@ -202,6 +198,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
         private final List<TcpChannel> channels;
         private final DiscoveryNode node;
         private final Version version;
+        private final boolean compress;
         private final AtomicBoolean isClosing = new AtomicBoolean(false);
 
         NodeChannels(DiscoveryNode node, List<TcpChannel> channels, ConnectionProfile connectionProfile, Version handshakeVersion) {
@@ -215,6 +212,7 @@ public abstract class TcpTransport extends AbstractLifecycleComponent implements
                     typeMapping.put(type, handle);
             }
             version = handshakeVersion;
+            compress = connectionProfile.getCompressionEnabled();
         }
 
         @Override

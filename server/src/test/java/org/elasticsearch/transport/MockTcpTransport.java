@@ -154,7 +154,7 @@ public class MockTcpTransport extends TcpTransport {
         try {
             input.readFully(minimalHeader);
         } catch (EOFException eof) {
-            throw new IOException("Connection reset by peer");
+            throw new IOException("Connection reset by peer: ");
         }
 
         // Read message length will throw stream corrupted exception if the marker bytes incorrect
@@ -225,6 +225,7 @@ public class MockTcpTransport extends TcpTransport {
         builder.setHandshakeTimeout(connectionProfile.getHandshakeTimeout());
         builder.setConnectTimeout(connectionProfile.getConnectTimeout());
         builder.setPingInterval(connectionProfile.getPingInterval());
+        builder.setCompressionEnabled(connectionProfile.getCompressionEnabled());
         return builder.build();
     }
 

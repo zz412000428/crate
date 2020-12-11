@@ -19,17 +19,6 @@
 
 package org.elasticsearch.transport;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.Matchers.contains;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.Version;
 import org.elasticsearch.action.ActionListener;
@@ -41,13 +30,22 @@ import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.transport.TransportAddress;
 import org.elasticsearch.common.util.BigArrays;
-import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.test.ESTestCase;
 import org.elasticsearch.threadpool.TestThreadPool;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.hamcrest.CoreMatchers.instanceOf;
 
 public class OutboundHandlerTests extends ESTestCase {
 
@@ -175,7 +173,7 @@ public class OutboundHandlerTests extends ESTestCase {
         AtomicReference<TransportResponse> responseRef = new AtomicReference<>();
         handler.setMessageListener(new TransportMessageListener() {
             @Override
-            public void onResponseSent(long requestId, String action, TransportResponse response, TransportResponseOptions options) {
+            public void onResponseSent(long requestId, String action, TransportResponse response) {
                 requestIdRef.set(requestId);
                 actionRef.set(action);
                 responseRef.set(response);

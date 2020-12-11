@@ -22,9 +22,9 @@ import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.elasticsearch.Version;
 import org.elasticsearch.cluster.ClusterName;
 import org.elasticsearch.cluster.ClusterState;
-import org.elasticsearch.cluster.coordination.CoordinationMetadata.VotingConfiguration;
 import org.elasticsearch.cluster.ESAllocationTestCase;
 import org.elasticsearch.cluster.block.ClusterBlocks;
+import org.elasticsearch.cluster.coordination.CoordinationMetadata.VotingConfiguration;
 import org.elasticsearch.cluster.metadata.Metadata;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
@@ -48,13 +48,11 @@ import org.elasticsearch.transport.Transport;
 import org.elasticsearch.transport.TransportChannel;
 import org.elasticsearch.transport.TransportRequest;
 import org.elasticsearch.transport.TransportResponse;
-import org.elasticsearch.transport.TransportResponseOptions;
 import org.elasticsearch.transport.TransportService;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -254,12 +252,6 @@ public class NodeJoinTests extends ESTestCase {
                 }
 
                 @Override
-                public void sendResponse(TransportResponse response,
-                                         TransportResponseOptions options) throws IOException {
-                    sendResponse(response);
-                }
-
-                @Override
                 public void sendResponse(Exception e) {
                     logger.error(() -> new ParameterizedMessage("unexpected error for {}", future), e);
                     future.markAsFailed(e);
@@ -412,11 +404,6 @@ public class NodeJoinTests extends ESTestCase {
             }
 
             @Override
-            public void sendResponse(TransportResponse response, TransportResponseOptions options) throws IOException {
-
-            }
-
-            @Override
             public void sendResponse(Exception exception) {
                 fail();
             }
@@ -443,10 +430,6 @@ public class NodeJoinTests extends ESTestCase {
 
             @Override
             public void sendResponse(TransportResponse response) {
-            }
-
-            @Override
-            public void sendResponse(TransportResponse response, TransportResponseOptions options) throws IOException {
             }
 
             @Override

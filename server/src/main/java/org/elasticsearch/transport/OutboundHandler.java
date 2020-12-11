@@ -19,9 +19,8 @@
 
 package org.elasticsearch.transport;
 
-import java.io.IOException;
-import java.util.Set;
-
+import io.crate.common.CheckedSupplier;
+import io.crate.common.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.message.ParameterizedMessage;
@@ -39,8 +38,7 @@ import org.elasticsearch.common.transport.TransportAddress;
 import org.elasticsearch.common.util.BigArrays;
 import org.elasticsearch.threadpool.ThreadPool;
 
-import io.crate.common.CheckedSupplier;
-import io.crate.common.io.IOUtils;
+import java.io.IOException;
 
 final class OutboundHandler {
 
@@ -105,7 +103,7 @@ final class OutboundHandler {
      * Sends the response to the given channel. This method should be used to send {@link TransportResponse}
      * objects back to the caller.
      *
-     * @see #sendErrorResponse(Version, Set, TcpChannel, long, String, Exception) for sending error responses
+     * @see #sendErrorResponse(Version, TcpChannel, long, String, Exception) for sending error responses
      */
     void sendResponse(final Version nodeVersion,
                       final TcpChannel channel,
@@ -122,9 +120,8 @@ final class OutboundHandler {
             isHandshake,
             compress
         );
-        TransportResponseOptions options = TransportResponseOptions.builder().withCompress(compress).build();
         ActionListener<Void> listener = ActionListener.wrap(
-            () -> messageListener.onResponseSent(requestId, action, response, options)
+            () -> messageListener.onResponseSent(requestId, action, response)
         );
         sendMessage(channel, message, listener);
     }
