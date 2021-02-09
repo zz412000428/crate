@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Consumer;
 
 import com.carrotsearch.hppc.cursors.IntObjectCursor;
@@ -83,6 +84,7 @@ import org.elasticsearch.tasks.Task;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.TransportService;
 
+import io.crate.exceptions.Exceptions;
 import io.crate.metadata.PartitionName;
 import io.crate.metadata.RelationName;
 import io.crate.metadata.cluster.DDLClusterStateHelpers;
@@ -379,23 +381,27 @@ public final class TransportCloseTable extends TransportMasterNodeAction<CloseTa
                 return;
             }
             assert blockedIndices.isEmpty() == false : "List of blocked indices is empty but cluster state was changed";
-            threadPool.executor(ThreadPool.Names.MANAGEMENT)
-                .execute(new WaitForClosedBlocksApplied(
-                    blockedIndices,
-                    ActionListener.wrap(
-                        results -> clusterService.submitStateUpdateTask(
-                            "close-indices",
-                            new CloseRoutingTableTask(
-                                Priority.URGENT,
-                                blockedIndices,
-                                results,
-                                request,
-                                listener
-                            )
-                        ),
-                        listener::onFailure)
-                    )
-                );
+            try {
+                threadPool.executor(ThreadPool.Names.MANAGEMENT)
+                    .execute(new WaitForClosedBlocksApplied(
+                        blockedIndices,
+                        ActionListener.wrap(
+                            results -> clusterService.submitStateUpdateTask(
+                                "close-indices",
+                                new CloseRoutingTableTask(
+                                    Priority.URGENT,
+                                    blockedIndices,
+                                    results,
+                                    request,
+                                    listener
+                                )
+                            ),
+                            listener::onFailure
+                        ))
+                    );
+            } catch (RejectedExecutionException e) {
+                listener.onFailure(e);
+            }
         }
     }
 
