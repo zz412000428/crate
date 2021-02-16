@@ -22,41 +22,40 @@ array
    ;
 
 item
-   : string         #value
+   : NULL           #null
+   | string         #value
    | NUMBER         #value
+   | bool           #value
    | array          #noop
-   | 'true'         #value
-   | 'false'        #value
-   | 'NULL'         #null
    ;
+
+bool
+    : 'true'
+    | 'false'
+    ;
 
 
 string
     : STRING        #quotedString
-    | QSTRING       #unquotedString
+    | CHAR+         #unquotedString
     ;
 
 STRING
     : '"' (ESC | ~["\\])* '"'
     ;
 
-
-QSTRING
-    : DIGIT* CHAR+
-    ;
-
 CHAR
-    : [a-zA-Z]
-    | [!-+]
-    | '-'
-    | '_'
-    | DIGIT
+    : [!-z]
     ;
+
 
 NUMBER
-    : '-'? DIGIT ('.' [0-9] +)? EXP?
+    : '-'? DIGIT '.' DIGIT EXP?
+    | '-'? DIGIT EXP
+    | '-'? DIGIT
     ;
 
+NULL: 'NULL';
 
 fragment ESC
     : '\\' (["\\/bfnrt] | UNICODE)
