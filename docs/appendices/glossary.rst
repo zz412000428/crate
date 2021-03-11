@@ -79,6 +79,24 @@ M
 
 .. _gloss-n:
 
+N
+-
+
+.. _gloss-nonscalar:
+
+**Nonscalar**
+    A :ref:`data type <data-types>` that can have multiple component values
+    (e.g., :ref:`arrays <data-type-array>` and :ref:`objects
+    <object_data_type>`).
+
+    Contrary to a :ref:`scalar <gloss-scalar>`.
+
+    .. SEEALSO::
+
+        :ref:`sql_ddl_datatypes_geographic`
+
+        :ref:`sql_ddl_datatypes_compound`
+
 
 .. _gloss-o:
 
@@ -214,6 +232,19 @@ R
 
 S
 -
+
+.. _gloss-scalar:
+
+**Scalar**
+    A :ref:`data type <data-types>` with a single value (e.g., :ref:`numbers
+    <data-type-numeric>` and :ref:`strings <data-type-varchar>`).
+
+    Contrary to a :ref:`nonscalar <gloss-nonscalar>`.
+
+    .. SEEALSO::
+
+        :ref:`sql_ddl_datatypes_primitives`
+
 
 .. _gloss-shard-allocation:
 
