@@ -178,8 +178,13 @@ tasks.withType(Zip) {
 
 installDist.dependsOn(chooseReleaseNotes)
 
+
+def compiler = javaToolchains.compilerFor {
+    languageVersion = JavaLanguageVersion.of(16)
+}
+
 def jdkCopySpec = copySpec {
-    from project.jdks.runtime
+    from compiler.get().metadata.installationPath.asFile.absolutePath
     exclude "demo/**"
     eachFile { details ->
         if (details.name == 'src.zip') {

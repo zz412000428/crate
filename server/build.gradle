@@ -87,6 +87,7 @@ task testOutputJar (type: Jar) {
     from sourceSets.test.output
 }
 
+
 task getVersion(dependsOn: 'classes', type: JavaExec) {
     def stdout = new ByteArrayOutputStream()
     classpath = sourceSets.main.runtimeClasspath

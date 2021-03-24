@@ -15,9 +15,28 @@ compileJava {
     options.compilerArgs << '-XDignore.symbol.file'
 }
 
+tasks.withType(JavaCompile).configureEach {
+    // Required for incremental compilation. Should become unnecessary with gradle 7
+    // Could also set `options.incremental = false` instead.
+    options.forkOptions.jvmArgs.addAll( ['--add-opens', 'jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED'] )
+}
+
 
 javadoc {
     options.addStringOption('XDignore.symbol.file', '')
+}
+
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(16)
+        vendor = JvmVendorSpec.ADOPTOPENJDK
+    }
+}
+tasks.withType(JavaExec).configureEach {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(16)
+    }
 }
 
 
