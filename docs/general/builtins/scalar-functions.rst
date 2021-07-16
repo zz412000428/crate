@@ -774,6 +774,63 @@ If you don't specify a time zone, ``truncate`` uses UTC time::
     +---------------+---------------+
     SELECT 3 rows in set (... sec)
 
+.. _date-bin:
+
+``date_bin(interval, timestamp, origin)``
+-----------------------------------------
+
+Return type is ``timestamp with time zone`` or ``timestamp without time zone``
+and same with timestamp and origin type.
+
+Puts timestamp to the beginning of interval aligned with origin. In case of
+single unit (1 second, 1 minute, 1 hour, 1 day) it gives the same result as
+:ref:`date_trunc <scalar-date-trunc>`. In case of 1 week interval date_bin
+returns same result as date_trunc only if origin is a Monday.
+
+If at least one argument is NULL, return value is NULL. Interval cannot be zero.
+Negative intervals are allowed and are treated the same as positive intervals.
+Intervals having month or year units are not supported due to varying length of
+those units.
+
+A timestamp can be binned to an interval of arbitrary length
+aligned with custom origin. 1609488000000 is Fri Jan 01 2021 08:00:00::
+
+    cr> select date_bin('3 hours' :: INTERVAL,
+    ... '2021-01-01T08:30:10Z'::timestamp without time zone,
+    ... '2021-01-01T05:00:00Z'::timestamp without time zone) as bin;
+    +---------------+
+    |           bin |
+    +---------------+
+    | 1609488000000 |
+    +---------------+
+    SELECT 1 row in set (... sec)
+
+.. TIP::
+
+    0 can be used as a shortcut for unix zero as the origin::
+
+        cr> select date_bin('2 hours'::INTERVAL, CURRENT_TIMESTAMP, 0) as bin;
+        +---------------+
+        |           bin |
+        +---------------+
+        | 1627041600000 |
+        +---------------+
+        SELECT 1 row in set (... sec)
+
+    Please note, that numbers are treated as UTC milliseconds on implicit cast
+    and if timestamp is in non-UTC zone you might want to set numeric origin to
+    the same zone (unless different zone timestamp and origin is intentional).
+
+        cr> select date_bin('4 hours' :: INTERVAL,
+        ... '2020-01-01T09:00:00+0200'::timestamp with time zone,
+        ... TIMEZONE('+02:00', 0)) as bin;
+        +---------------+
+        |           bin |
+        +---------------+
+        | 1577858400000 |
+        +---------------+
+        SELECT 1 row in set (... sec)
+
 ``extract(field from source)``
 ------------------------------
 
