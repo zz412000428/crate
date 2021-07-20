@@ -21,11 +21,12 @@
 
 package io.crate.window;
 
+import io.crate.exceptions.InvalidArgumentException;
 import io.crate.execution.engine.window.AbstractWindowFunctionTest;
 import io.crate.metadata.ColumnIdent;
 import io.crate.module.ExtraFunctionsModule;
+import org.junit.Assert;
 import org.junit.Test;
-import org.junit.jupiter.api.Disabled;
 
 import java.util.List;
 
@@ -344,18 +345,21 @@ public class OffsetValueFunctionsTest extends AbstractWindowFunctionTest {
         );
     }
 
-    @Disabled
     @Test
-    public void testLagWithIgnoreNullsAndZeroOffsetIgnoreIgnoreNulls() throws Throwable {
-        /****** offset 0 seems not right *************/
-
-
-        assertEvaluate(
-            "lag(x,0,123) ignore nulls over()",
-            contains(new Object[]{1, 2, null, 3, null, null, 4, 5, null, 6, null, 7}),
-            List.of(new ColumnIdent("x")),
-            new Object[][]{{1}, {2}, {null}, {3}, {null}, {null}, {4}, {5}, {null}, {6}, {null}, {7}}
-        );
+    public void testLagWithIgnoreNullsAndZeroOffsetThrows() throws Throwable {
+        try {
+            assertEvaluate(
+                "lag(x,0,123) ignore nulls over()",
+                null,
+                List.of(new ColumnIdent("x")),
+                new Object[][]{{1}, {2}, {null}, {3}, {null}, {null}, {4}, {5}, {null}, {6}, {null}, {7}}
+            );
+            Assert.fail();
+        } catch (InvalidArgumentException e) {
+            assertEquals("offset 0 is not a valid argument if ignore nulls flag is set", e.getMessage());
+        } catch (Exception e) {
+            Assert.fail();
+        }
     }
 
     private static final List<ColumnIdent> INTERVAL_COLS = List.of(new ColumnIdent("x"), new ColumnIdent("y"));
