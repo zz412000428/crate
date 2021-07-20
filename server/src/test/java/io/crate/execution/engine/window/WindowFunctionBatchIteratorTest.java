@@ -82,7 +82,7 @@ public class WindowFunctionBatchIteratorTest extends ESTestCase {
                 }
             }),
             Collections.emptyList(),
-            new boolean[]{false},
+            new boolean[]{randomBoolean()},
             new Input[][] { new Input[0] }
         ).get(5, TimeUnit.SECONDS);
         assertThat(

@@ -24,7 +24,6 @@ package io.crate.window;
 import io.crate.data.Input;
 import io.crate.data.Row;
 import io.crate.data.RowN;
-import io.crate.exceptions.InvalidArgumentException;
 import io.crate.execution.engine.collect.CollectExpression;
 import io.crate.execution.engine.window.WindowFrameState;
 import io.crate.execution.engine.window.WindowFunction;
@@ -246,7 +245,7 @@ public class OffsetValueFunctions implements WindowFunction {
             offset = 1;
         }
         if (offset == 0 && ignoreNulls) {
-            throw new InvalidArgumentException("offset 0 is not a valid argument if ignore nulls flag is set");
+            throw new IllegalArgumentException("offset 0 is not a valid argument if ignore nulls flag is set");
         }
         // if the offset is changed compared to the previous iteration, offsetDirection's cache will be cleared
         if (idxInPartition == 0 || (cachedOffset != null && cachedOffset != offset)) {
@@ -281,11 +280,12 @@ public class OffsetValueFunctions implements WindowFunction {
                 parseTypeSignature("E"),
                 parseTypeSignature("E")
             ).withTypeVariableConstraints(typeVariable("E")),
-            (signature, boundSignature) -> new OffsetValueFunctions(
-                signature,
-                boundSignature,
-                LEAD_DEFAULT_OFFSET
-            )
+            (signature, boundSignature) ->
+                new OffsetValueFunctions(
+                    signature,
+                    boundSignature,
+                    LEAD_DEFAULT_OFFSET
+                )
         );
         module.register(
             Signature.window(
@@ -294,11 +294,12 @@ public class OffsetValueFunctions implements WindowFunction {
                 DataTypes.INTEGER.getTypeSignature(),
                 parseTypeSignature("E")
             ).withTypeVariableConstraints(typeVariable("E")),
-            (signature, boundSignature) -> new OffsetValueFunctions(
-                signature,
-                boundSignature,
-                LEAD_DEFAULT_OFFSET
-            )
+            (signature, boundSignature) ->
+                new OffsetValueFunctions(
+                    signature,
+                    boundSignature,
+                    LEAD_DEFAULT_OFFSET
+                )
         );
         module.register(
             Signature.window(
@@ -308,11 +309,12 @@ public class OffsetValueFunctions implements WindowFunction {
                 parseTypeSignature("E"),
                 parseTypeSignature("E")
             ).withTypeVariableConstraints(typeVariable("E")),
-            (signature, boundSignature) -> new OffsetValueFunctions(
-                signature,
-                boundSignature,
-                LEAD_DEFAULT_OFFSET
-            )
+            (signature, boundSignature) ->
+                new OffsetValueFunctions(
+                    signature,
+                    boundSignature,
+                    LEAD_DEFAULT_OFFSET
+                )
         );
 
         module.register(
@@ -321,11 +323,12 @@ public class OffsetValueFunctions implements WindowFunction {
                 parseTypeSignature("E"),
                 parseTypeSignature("E")
             ).withTypeVariableConstraints(typeVariable("E")),
-            (signature, boundSignature) -> new OffsetValueFunctions(
-                signature,
-                boundSignature,
-                LAG_DEFAULT_OFFSET
-            )
+            (signature, boundSignature) ->
+                new OffsetValueFunctions(
+                    signature,
+                    boundSignature,
+                    LAG_DEFAULT_OFFSET
+                )
         );
         module.register(
             Signature.window(
@@ -334,11 +337,12 @@ public class OffsetValueFunctions implements WindowFunction {
                 DataTypes.INTEGER.getTypeSignature(),
                 parseTypeSignature("E")
             ).withTypeVariableConstraints(typeVariable("E")),
-            (signature, boundSignature) -> new OffsetValueFunctions(
-                signature,
-                boundSignature,
-                LAG_DEFAULT_OFFSET
-            )
+            (signature, boundSignature) ->
+                new OffsetValueFunctions(
+                    signature,
+                    boundSignature,
+                    LAG_DEFAULT_OFFSET
+                )
         );
         module.register(
             Signature.window(
@@ -348,11 +352,12 @@ public class OffsetValueFunctions implements WindowFunction {
                 parseTypeSignature("E"),
                 parseTypeSignature("E")
             ).withTypeVariableConstraints(typeVariable("E")),
-            (signature, boundSignature) -> new OffsetValueFunctions(
-                signature,
-                boundSignature,
-                LAG_DEFAULT_OFFSET
-            )
+            (signature, boundSignature) ->
+                new OffsetValueFunctions(
+                    signature,
+                    boundSignature,
+                    LAG_DEFAULT_OFFSET
+                )
         );
     }
 }

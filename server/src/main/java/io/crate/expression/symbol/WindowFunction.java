@@ -43,7 +43,7 @@ import static io.crate.metadata.FunctionType.WINDOW;
 public class WindowFunction extends Function {
 
     private final WindowDefinition windowDefinition;
-    private final boolean ignoreNulls;
+    private final Boolean ignoreNulls;
 
     public WindowFunction(StreamInput in) throws IOException {
         super(in);
@@ -55,17 +55,8 @@ public class WindowFunction extends Function {
                           List<Symbol> arguments,
                           DataType<?> returnType,
                           @Nullable Symbol filter,
-                          WindowDefinition windowDefinition) {
-        /////////////////////possible to remove
-        this(signature, arguments, returnType, filter, windowDefinition, false);
-    }
-
-    public WindowFunction(Signature signature,
-                          List<Symbol> arguments,
-                          DataType<?> returnType,
-                          @Nullable Symbol filter,
                           WindowDefinition windowDefinition,
-                          boolean ignoreNulls) {
+                          Boolean ignoreNulls) {
         super(signature, arguments, returnType, filter);
         assert signature.getKind() == WINDOW || signature.getKind() == AGGREGATE :
             "only window and aggregate functions are allowed to be modelled over a window";
@@ -77,8 +68,12 @@ public class WindowFunction extends Function {
         return windowDefinition;
     }
 
-    public boolean ignoreNulls() {
+    public Boolean ignoreNulls() {
         return ignoreNulls;
+    }
+
+    public boolean ignoreNullsOrDefault() {
+        return ignoreNulls != null && ignoreNulls;
     }
 
     @Override
@@ -109,17 +104,24 @@ public class WindowFunction extends Function {
             return false;
         }
         WindowFunction that = (WindowFunction) o;
-        return windowDefinition.equals(that.windowDefinition);
+        return ignoreNulls == that.ignoreNulls && windowDefinition.equals(that.windowDefinition);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), windowDefinition);
+        return Objects.hash(super.hashCode(), windowDefinition, ignoreNulls);
     }
 
     @Override
     public String toString(Style style) {
         var builder = new StringBuilder(super.toString(style));
+        if (ignoreNulls != null) {
+            if (ignoreNulls) {
+                builder.append(" IGNORE NULLS");
+            } else {
+                builder.append(" RESPECT NULLS");
+            }
+        }
         builder.append(" OVER (");
 
         var partitions = windowDefinition.partitions();

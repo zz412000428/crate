@@ -120,7 +120,7 @@ public class WindowProjector {
             }
             windowFuncArgsExpressions.addAll(ctx.expressions());
             windowFuncArgsInputs[idx] = ctx.topLevelInputs().toArray(new Input[0]);
-            ignoreNulls[idx] = windowFunctionSymbol.ignoreNulls();
+            ignoreNulls[idx] = windowFunctionSymbol.ignoreNullsOrDefault();
         }
         var windowDefinition = projection.windowDefinition();
         var partitions = windowDefinition.partitions();

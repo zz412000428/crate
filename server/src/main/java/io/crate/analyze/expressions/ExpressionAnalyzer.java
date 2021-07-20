@@ -21,7 +21,31 @@
 
 package io.crate.analyze.expressions;
 
+import static io.crate.sql.tree.IntervalLiteral.IntervalField.DAY;
+import static io.crate.sql.tree.IntervalLiteral.IntervalField.HOUR;
+import static io.crate.sql.tree.IntervalLiteral.IntervalField.MINUTE;
+import static io.crate.sql.tree.IntervalLiteral.IntervalField.MONTH;
+import static io.crate.sql.tree.IntervalLiteral.IntervalField.SECOND;
+import static io.crate.sql.tree.IntervalLiteral.IntervalField.YEAR;
+import static java.util.stream.Collectors.toList;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.google.common.collect.Lists;
+
+import org.joda.time.Period;
+
 import io.crate.analyze.DataTypeAnalyzer;
 import io.crate.analyze.FrameBoundDefinition;
 import io.crate.analyze.NegateLiterals;
@@ -132,26 +156,7 @@ import io.crate.types.BitStringType;
 import io.crate.types.DataType;
 import io.crate.types.DataTypes;
 import io.crate.types.UndefinedType;
-import org.joda.time.Period;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
-
-import static io.crate.sql.tree.IntervalLiteral.IntervalField.DAY;
-import static io.crate.sql.tree.IntervalLiteral.IntervalField.HOUR;
-import static io.crate.sql.tree.IntervalLiteral.IntervalField.MINUTE;
-import static io.crate.sql.tree.IntervalLiteral.IntervalField.MONTH;
-import static io.crate.sql.tree.IntervalLiteral.IntervalField.SECOND;
-import static io.crate.sql.tree.IntervalLiteral.IntervalField.YEAR;
-import static java.util.stream.Collectors.toList;
 
 /**
  * <p>This Analyzer can be used to convert Expression from the SQL AST into symbols.</p>
@@ -1079,7 +1084,7 @@ public class ExpressionAnalyzer {
                                                 String functionName,
                                                 List<Symbol> arguments,
                                                 Symbol filter,
-                                                boolean ignoreNulls,
+                                                Boolean ignoreNulls,
                                                 WindowDefinition windowDefinition,
                                                 ExpressionAnalysisContext context) {
         return allocateBuiltinOrUdfFunction(
@@ -1099,7 +1104,7 @@ public class ExpressionAnalyzer {
                                           CoordinatorTxnCtx coordinatorTxnCtx,
                                           NodeContext nodeCtx) {
         return allocateBuiltinOrUdfFunction(
-            null, functionName, arguments, filter, false, context, null, coordinatorTxnCtx, nodeCtx);
+            null, functionName, arguments, filter, null, context, null, coordinatorTxnCtx, nodeCtx);
     }
 
     /**
@@ -1120,7 +1125,7 @@ public class ExpressionAnalyzer {
                                                        String functionName,
                                                        List<Symbol> arguments,
                                                        @Nullable Symbol filter,
-                                                       boolean ignoreNulls,
+                                                       Boolean ignoreNulls,
                                                        ExpressionAnalysisContext context,
                                                        @Nullable WindowDefinition windowDefinition,
                                                        CoordinatorTxnCtx coordinatorTxnCtx,
@@ -1144,11 +1149,28 @@ public class ExpressionAnalyzer {
             }
             newFunction = new Function(signature, castArguments, boundSignature.getReturnType().createType(), filter);
         } else {
-            if (signature.getKind() != FunctionType.WINDOW && signature.getKind() != FunctionType.AGGREGATE) {
-                throw new IllegalArgumentException(String.format(
-                    Locale.ENGLISH,
-                    "OVER clause was specified, but %s is neither a window nor an aggregate function.",
-                    functionName));
+            if (signature.getKind() != FunctionType.WINDOW) {
+                if (signature.getKind() != FunctionType.AGGREGATE) {
+                    throw new IllegalArgumentException(String.format(
+                        Locale.ENGLISH,
+                        "OVER clause was specified, but %s is neither a window nor an aggregate function.",
+                        functionName));
+                } else {
+                    if (ignoreNulls != null) {
+                        throw new IllegalArgumentException(String.format(
+                            Locale.ENGLISH,
+                            "%s cannot accept RESPECT or IGNORE NULLS flag.",
+                            functionName));
+                    }
+                }
+            } else {
+                // cannot access these static strings as they are in extensions module
+                if (!Set.of("first_value","last_value","nth_value","lead","lag").contains(functionName) && ignoreNulls != null) {
+                    throw new IllegalArgumentException(String.format(
+                        Locale.ENGLISH,
+                        "%s cannot accept RESPECT or IGNORE NULLS flag.",
+                        functionName));
+                }
             }
             newFunction = new WindowFunction(
                 signature,

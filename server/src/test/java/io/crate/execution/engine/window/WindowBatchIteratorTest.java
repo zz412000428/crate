@@ -46,6 +46,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -82,7 +83,7 @@ public class WindowBatchIteratorTest {
                     Runnable::run,
                     Collections.singletonList(rowNumberWindowFunction()),
                     Collections.emptyList(),
-                    new boolean[]{false},
+                    new boolean[]{new Random().nextBoolean()},
                     new Input[0]);
             }
         );
@@ -106,7 +107,7 @@ public class WindowBatchIteratorTest {
                     Runnable::run,
                     Collections.singletonList(rowNumberWindowFunction()),
                     Collections.emptyList(),
-                    new boolean[]{false},
+                    new boolean[]{new Random().nextBoolean()},
                     new Input[0]);
             }
         );
@@ -317,7 +318,7 @@ public class WindowBatchIteratorTest {
             Runnable::run,
             List.of(frameBoundsWindowFunction()),
             List.of(),
-            new boolean[]{false},
+            new boolean[]{new Random().nextBoolean()},
             args
         ).get(5, TimeUnit.SECONDS);
         assertThat(
@@ -352,7 +353,7 @@ public class WindowBatchIteratorTest {
             Runnable::run,
             List.of(rowNumberWindowFunction()),
             List.of(),
-            new boolean[]{false},
+            new boolean[]{new Random().nextBoolean()},
             new Input[][]{new Input[0]}
         );
         TestingRowConsumer consumer = new TestingRowConsumer();
@@ -378,7 +379,7 @@ public class WindowBatchIteratorTest {
             Runnable::run,
             List.of(firstCellValue()),
             List.of(),
-            new boolean[]{false},
+            new boolean[]{new Random().nextBoolean()},
             args
         ).get(5, TimeUnit.SECONDS);
         assertThat(
