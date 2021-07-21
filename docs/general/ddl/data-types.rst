@@ -45,6 +45,7 @@ Primitive types are :ref:`scalar <gloss-scalar>` values:
 * `date <date_>`_
 * `interval`_
 * `bit`_
+* `json <data-type-json_>`_
 
 .. _sql_ddl_datatypes_geographic:
 
@@ -253,6 +254,54 @@ Inserting values that are either too short or too long results in an error:
 
     cr> DROP TABLE metrics;
     DROP OK, 1 row affected (... sec)
+
+
+.. _data-type-json:
+
+``json``
+--------
+
+A type representing a JSON string.
+
+This type primarily exists for compatibility with PostgreSQL. It cannot to be
+used in data definition statements and it is therefore not possible to use it
+to store data. The :ref:`OBJECT <object_data_type>` exists as a more powerful
+alternative that you can use instead.
+
+The following casts are supported to enable interoperability with PostgreSQL
+clients which may use the JSON type.
+
+Casting from ``STRING`` to ``JSON``::
+
+    cr> SELECT '{"x": 10}'::json;
+    +-------------+
+    | '{"x": 10}' |
+    +-------------+
+    | {"x": 10}   |
+    +-------------+
+    SELECT 1 row in set (... sec)
+
+Casting from ``JSON`` to ``OBJECT``::
+
+    cr> SELECT ('{"x": 10}'::json)::object;
+    +-----------+
+    | {"x"=10}  |
+    +-----------+
+    | {"x": 10} |
+    +-----------+
+    SELECT 1 row in set (... sec)
+
+
+Casting from ``OBJECT`` to ``JSON``::
+
+    cr> SELECT {x=10}::json;
+    +------------+
+    | '{"x":10}' |
+    +------------+
+    | {"x":10}   |
+    +------------+
+    SELECT 1 row in set (... sec)
+
 
 
 .. _data-type-numeric:
