@@ -46,7 +46,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -83,7 +82,7 @@ public class WindowBatchIteratorTest {
                     Runnable::run,
                     Collections.singletonList(rowNumberWindowFunction()),
                     Collections.emptyList(),
-                    new boolean[]{new Random().nextBoolean()},
+                    new Boolean[]{null},
                     new Input[0]);
             }
         );
@@ -107,7 +106,7 @@ public class WindowBatchIteratorTest {
                     Runnable::run,
                     Collections.singletonList(rowNumberWindowFunction()),
                     Collections.emptyList(),
-                    new boolean[]{new Random().nextBoolean()},
+                    new Boolean[]{null},
                     new Input[0]);
             }
         );
@@ -128,7 +127,7 @@ public class WindowBatchIteratorTest {
             Runnable::run,
             List.of(frameBoundsWindowFunction()),
             List.of(),
-            new boolean[]{false},
+            new Boolean[]{null},
             args).get(5, TimeUnit.SECONDS).spliterator(), false)
             .collect(toList());
         var expectedBounds = tuple(0, 10);
@@ -150,7 +149,7 @@ public class WindowBatchIteratorTest {
             Runnable::run,
             List.of(frameBoundsWindowFunction()),
             List.of(),
-            new boolean[]{false},
+            new Boolean[]{null},
             args
         ).get(5, TimeUnit.SECONDS);
         assertThat(
@@ -197,7 +196,7 @@ public class WindowBatchIteratorTest {
             Runnable::run,
             List.of(frameBoundsWindowFunction()),
             List.of(),
-            new boolean[]{false},
+            new Boolean[]{null},
             args
         ).get(5, TimeUnit.SECONDS);
         assertThat(
@@ -245,7 +244,7 @@ public class WindowBatchIteratorTest {
             Runnable::run,
             List.of(frameBoundsWindowFunction()),
             List.of(),
-            new boolean[]{false},
+            new Boolean[]{null},
             args
         ).get(5, TimeUnit.SECONDS);
         assertThat(
@@ -318,7 +317,7 @@ public class WindowBatchIteratorTest {
             Runnable::run,
             List.of(frameBoundsWindowFunction()),
             List.of(),
-            new boolean[]{new Random().nextBoolean()},
+            new Boolean[]{null},
             args
         ).get(5, TimeUnit.SECONDS);
         assertThat(
@@ -353,7 +352,7 @@ public class WindowBatchIteratorTest {
             Runnable::run,
             List.of(rowNumberWindowFunction()),
             List.of(),
-            new boolean[]{new Random().nextBoolean()},
+            new Boolean[]{null},
             new Input[][]{new Input[0]}
         );
         TestingRowConsumer consumer = new TestingRowConsumer();
@@ -379,7 +378,7 @@ public class WindowBatchIteratorTest {
             Runnable::run,
             List.of(firstCellValue()),
             List.of(),
-            new boolean[]{new Random().nextBoolean()},
+            new Boolean[]{null},
             args
         ).get(5, TimeUnit.SECONDS);
         assertThat(
@@ -397,7 +396,7 @@ public class WindowBatchIteratorTest {
             public Object execute(int idxInPartition,
                                   WindowFrameState currentFrame,
                                   List<? extends CollectExpression<Row, ?>> expressions,
-                                  boolean ignoreNulls,
+                                  Boolean ignoreNulls,
                                   Input... args) {
                 return currentFrame.getRows().iterator().next()[0];
             }
@@ -420,7 +419,7 @@ public class WindowBatchIteratorTest {
             public Object execute(int idxInPartition,
                                   WindowFrameState currentFrame,
                                   List<? extends CollectExpression<Row, ?>> expressions,
-                                  boolean ignoreNulls,
+                                  Boolean ignoreNulls,
                                   Input... args) {
                 return tuple(currentFrame.lowerBound(), currentFrame.upperBoundExclusive());
             }
@@ -443,7 +442,7 @@ public class WindowBatchIteratorTest {
             public Object execute(int idxInPartition,
                                   WindowFrameState currentFrame,
                                   List<? extends CollectExpression<Row, ?>> expressions,
-                                  boolean ignoreNulls,
+                                  Boolean ignoreNulls,
                                   Input... args) {
                 return idxInPartition + 1; // sql row numbers are 1-indexed;
             }

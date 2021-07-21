@@ -37,7 +37,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -1162,14 +1161,6 @@ public class ExpressionAnalyzer {
                             "%s cannot accept RESPECT or IGNORE NULLS flag.",
                             functionName));
                     }
-                }
-            } else {
-                // cannot access these static strings as they are in extensions module
-                if (!Set.of("first_value","last_value","nth_value","lead","lag").contains(functionName) && ignoreNulls != null) {
-                    throw new IllegalArgumentException(String.format(
-                        Locale.ENGLISH,
-                        "%s cannot accept RESPECT or IGNORE NULLS flag.",
-                        functionName));
                 }
             }
             newFunction = new WindowFunction(

@@ -233,8 +233,9 @@ public class NthValueFunctions implements WindowFunction {
     public Object execute(int idxInPartition,
                           WindowFrameState currentFrame,
                           List<? extends CollectExpression<Row, ?>> expressions,
-                          boolean ignoreNulls,
+                          Boolean ignoreNulls,
                           Input... args) {
+        boolean ignoreNullsOrFalse = ignoreNulls != null && ignoreNulls;
         boolean shrinkingWindow = isLowerBoundIncreasing(currentFrame, seenFrameLowerBound);
         if (idxInPartition == 0 || currentFrame.upperBoundExclusive() > seenFrameUpperBound || shrinkingWindow) {
 
@@ -254,7 +255,7 @@ public class NthValueFunctions implements WindowFunction {
             resultForCurrentFrame = implementation.execute(adjustForShrinkingWindow,
                                                            currentFrame,
                                                            expressions,
-                                                           ignoreNulls,
+                                                           ignoreNullsOrFalse,
                                                            args);
             seenFrameLowerBound = currentFrame.lowerBound();
             seenFrameUpperBound = currentFrame.upperBoundExclusive();

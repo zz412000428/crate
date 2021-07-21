@@ -29,6 +29,7 @@ import io.crate.common.collections.Lists2;
 import io.crate.expression.symbol.format.Style;
 import io.crate.metadata.functions.Signature;
 import io.crate.types.DataType;
+import org.elasticsearch.Version;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 
@@ -48,7 +49,11 @@ public class WindowFunction extends Function {
     public WindowFunction(StreamInput in) throws IOException {
         super(in);
         windowDefinition = new WindowDefinition(in);
-        ignoreNulls = false;
+        if (in.getVersion().onOrAfter(Version.V_4_7_0)) {
+            ignoreNulls = in.readOptionalBoolean();
+        } else {
+            ignoreNulls = null;
+        }
     }
 
     public WindowFunction(Signature signature,
@@ -72,10 +77,6 @@ public class WindowFunction extends Function {
         return ignoreNulls;
     }
 
-    public boolean ignoreNullsOrDefault() {
-        return ignoreNulls != null && ignoreNulls;
-    }
-
     @Override
     public <C, R> R accept(SymbolVisitor<C, R> visitor, C context) {
         return visitor.visitWindowFunction(this, context);
@@ -90,6 +91,9 @@ public class WindowFunction extends Function {
     public void writeTo(StreamOutput out) throws IOException {
         super.writeTo(out);
         windowDefinition.writeTo(out);
+        if (out.getVersion().onOrAfter(Version.V_4_7_0)) {
+            out.writeOptionalBoolean(ignoreNulls);
+        }
     }
 
     @Override

@@ -65,8 +65,11 @@ public class RankFunctions implements WindowFunction {
     public Object execute(int idxInPartition,
                           WindowFrameState currentFrame,
                           List<? extends CollectExpression<Row, ?>> expressions,
-                          boolean ignoreNulls,
+                          Boolean ignoreNulls,
                           Input... args) {
+        if (ignoreNulls != null) {
+            throw new IllegalArgumentException("rank cannot accept RESPECT or IGNORE NULLS flag.");
+        }
         if (idxInPartition == 0) {
             rank = 1;
             seenLastUpperBound = currentFrame.upperBoundExclusive();

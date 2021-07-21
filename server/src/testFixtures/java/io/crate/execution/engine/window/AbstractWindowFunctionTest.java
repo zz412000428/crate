@@ -171,7 +171,7 @@ public abstract class AbstractWindowFunctionTest extends CrateDummyClusterServic
             Runnable::run,
             List.of(windowFunctionImpl),
             argsCtx.expressions(),
-            new boolean[]{windowFunctionSymbol.ignoreNullsOrDefault()},
+            new Boolean[]{windowFunctionSymbol.ignoreNulls()},
             argsCtx.topLevelInputs().toArray(new Input[0])
         );
         List<Object> actualResult;

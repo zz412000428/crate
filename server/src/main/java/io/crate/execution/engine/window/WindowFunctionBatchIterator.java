@@ -86,7 +86,7 @@ public final class WindowFunctionBatchIterator {
                                         Executor executor,
                                         List<WindowFunction> windowFunctions,
                                         List<? extends CollectExpression<Row, ?>> argsExpressions,
-                                        boolean[] ignoreNulls,
+                                        Boolean[] ignoreNulls,
                                         Input[]... args) {
         // As optimization we use 1 list that acts both as inputs(source) and as outputs.
         // The window function results are injected during the computation into spare cells that are eagerly created
@@ -136,7 +136,7 @@ public final class WindowFunctionBatchIterator {
         Executor executor,
         List<WindowFunction> windowFunctions,
         List<? extends CollectExpression<Row, ?>> argsExpressions,
-        boolean[] ignoreNulls,
+        Boolean[] ignoreNulls,
         Input[]... args) {
 
         Function<List<Object[]>, Iterable<Object[]>> computeWindowsFn = sortedRows -> computeWindowFunctions(
@@ -167,7 +167,7 @@ public final class WindowFunctionBatchIterator {
                                                              int numCellsInSourceRow,
                                                              List<WindowFunction> windowFunctions,
                                                              List<? extends CollectExpression<Row, ?>> argsExpressions,
-                                                             boolean[] ignoreNulls,
+                                                             Boolean[] ignoreNulls,
                                                              Input[]... args) {
         return () -> new Iterator<>() {
 
@@ -234,7 +234,7 @@ public final class WindowFunctionBatchIterator {
                                                     int idx,
                                                     int idxInPartition,
                                                     List<? extends CollectExpression<Row, ?>> argsExpressions,
-                                                    boolean[] ignoreNulls,
+                                                    Boolean[] ignoreNulls,
                                                     Input[]... args) {
         Object[] row = rows.get(idx);
         for (int c = 0; c < windowFunctions.size(); c++) {

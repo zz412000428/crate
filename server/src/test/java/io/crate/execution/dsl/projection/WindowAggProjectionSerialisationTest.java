@@ -68,7 +68,7 @@ public class WindowAggProjectionSerialisationTest {
             sumFunctionImpl.boundSignature().getReturnType().createType(),
             null,
             partitionByOneWindowDef,
-            false
+            true
         );
         WindowFunction secondWindowFunction = new WindowFunction(
             sumFunctionImpl.signature(),
@@ -76,7 +76,7 @@ public class WindowAggProjectionSerialisationTest {
             sumFunctionImpl.boundSignature().getReturnType().createType(),
             null,
             partitionByTwoWindowDef,
-            false
+            null
         );
 
         Symbol standaloneInput = Literal.of(42L);
@@ -111,7 +111,7 @@ public class WindowAggProjectionSerialisationTest {
             sumFunctionImpl.boundSignature().getReturnType().createType(),
             null,
             partitionByOneWindowDef,
-            false);
+            null);
 
         Symbol standaloneInput = Literal.of(42L);
         var windowAggProjection = new WindowAggProjection(

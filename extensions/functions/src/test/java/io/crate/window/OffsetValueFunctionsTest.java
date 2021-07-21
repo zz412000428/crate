@@ -21,12 +21,10 @@
 
 package io.crate.window;
 
-import io.crate.exceptions.InvalidArgumentException;
 import io.crate.execution.engine.window.AbstractWindowFunctionTest;
 import io.crate.metadata.ColumnIdent;
 import io.crate.module.ExtraFunctionsModule;
 import io.crate.testing.Asserts;
-import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.List;
