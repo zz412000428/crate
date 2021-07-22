@@ -263,13 +263,13 @@ Inserting values that are either too short or too long results in an error:
 
 A type representing a JSON string.
 
-This type primarily exists for compatibility with PostgreSQL. It cannot to be
-used in data definition statements and it is therefore not possible to use it
-to store data. The :ref:`OBJECT <object_data_type>` exists as a more powerful
-alternative that you can use instead.
+This type only exists for compatibility and interoperability with PostgreSQL. It cannot to be
+used in data definition statements and it is not possible to use it to store data. 
+To store JSON data use the existing :ref:`OBJECT <object_data_type>` type. It is a more powerful
+alternative that offers more flexibility and delivering the same benefits.
 
-The following casts are supported to enable interoperability with PostgreSQL
-clients which may use the JSON type.
+The JSON types primary use is in :ref:`type casting <type_cast>` for interoperability with PostgreSQL clients which may use the ``JSON`` type.
+The following type casts are example of supported usage of the ``JSON`` data type:
 
 Casting from ``STRING`` to ``JSON``::
 
