@@ -817,9 +817,9 @@ aligned with custom origin. 1609488000000 is Fri Jan 01 2021 08:00:00::
         +---------------+
         SELECT 1 row in set (... sec)
 
-    Please note, that numbers are treated as UTC milliseconds on implicit cast
-    and if timestamp is in non-UTC zone you might want to set numeric origin to
-    the same zone (unless different zone timestamp and origin is intentional).
+    Please note, that implicit cast treats numbers as is, i.e as a timestamp in
+    that zone and if timestamp is in non-UTC zone you might want to set numeric
+    origin to the same zone.
 
         cr> select date_bin('4 hours' :: INTERVAL,
         ... '2020-01-01T09:00:00+0200'::timestamp with time zone,
